@@ -2,53 +2,88 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Deblocked Chat</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <!-- Welcome Screen -->
+  <!-- Welcome / Account -->
   <div id="welcome-screen" class="center-screen">
-    <div class="card">
+    <div class="card welcome-card">
       <h2>👤 Welcome!</h2>
       <p>Create your account to start chatting</p>
-      <input id="usernameInput" placeholder="Enter your username" />
+      <input id="usernameInput" placeholder="Enter your username"/>
       <button id="createAccountBtn" class="rainbow-btn">
         <span>Log In</span>
       </button>
     </div>
   </div>
 
-  <!-- Chat Layout -->
+  <!-- App Layout -->
   <div id="chat-layout" class="hidden">
     <aside id="sidebar">
-      <header>
+      <header class="sidebar-top">
         <h3>Messages</h3>
-        <button id="newChatBtn">+</button>
+        <div class="top-actions">
+          <button id="newChatBtn" class="icon-btn" title="New DM">
+            <img src="https://cdn-icons-png.flaticon.com/128/880/880594.png" alt="add" />
+          </button>
+        </div>
       </header>
-      <div id="conversations"></div>
+
+      <div class="search-wrap">
+        <input id="search" placeholder="Search conversations..."/>
+      </div>
+
+      <div id="conversations">
+        <!-- rows rendered by JS -->
+      </div>
+
       <footer id="userFooter">
-        <span id="currentUser"></span> <span class="status">Online</span>
+        <div class="user-inline">
+          <div class="avatar" id="meAvatar">?</div>
+          <div>
+            <div id="currentUser" class="me-name">You</div>
+            <div class="status">Online</div>
+          </div>
+        </div>
       </footer>
     </aside>
 
     <main id="chat-area">
       <header id="chatHeader">Global Chat</header>
+
       <div id="chat"></div>
+
       <div id="inputBar">
-        <input id="message" placeholder="Type a message..." />
-        <button id="sendBtn" disabled>Send</button>
+        <input id="message" placeholder="Type a message…"/>
+        <button id="sendBtn" class="send-btn" disabled title="Send">
+          <img src="https://cdn-icons-png.flaticon.com/128/1933/1933005.png" alt="send"/>
+        </button>
       </div>
     </main>
   </div>
 
-  <!-- Modal -->
+  <!-- New DM Modal -->
   <div id="modal" class="hidden">
     <div class="modal-content">
       <h3>Start New Chat</h3>
-      <input id="newChatUser" placeholder="Enter username..." />
-      <button id="startChatBtn">Start Chat</button>
-      <button id="closeModalBtn">Cancel</button>
+      <input id="newChatUser" placeholder="Enter username…"/>
+      <div class="modal-actions">
+        <button id="startChatBtn" class="primary">Start Chat</button>
+        <button id="closeModalBtn" class="ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error modal -->
+  <div id="error-modal" class="hidden">
+    <div class="modal-content">
+      <h3>User does not exist</h3>
+      <p>The user you entered is not currently online.</p>
+      <div class="modal-actions">
+        <button id="closeErrorBtn" class="primary">OK</button>
+      </div>
     </div>
   </div>
 
