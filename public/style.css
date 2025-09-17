@@ -66,6 +66,14 @@ body {
   background: #1a1a1a;
 }
 
+/* Shrink Direct Message Someone button */
+#newChatBtn {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+
 /* Layout */
 #chat-layout {
   display: flex;
@@ -354,6 +362,28 @@ main#chat-area {
   background: #3a9cd9;
 }
 
+/* Attach button (rounded, same style as send button) */
+.icon-btn {
+  margin-left: 6px;
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  background: #4cafef;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background: #3a9cd9;
+}
+
+.icon-img {
+  width: 20px;
+  height: 20px;
+}
+
 /* Modal */
 #modal {
   position: fixed;
@@ -431,4 +461,29 @@ main#chat-area {
   border-radius: 12px;
   width: 280px;
   text-align: center;
+}
+
+/* Modern scrollbars */
+#chat::-webkit-scrollbar,
+#conversations::-webkit-scrollbar {
+  width: 10px;
+}
+
+#chat::-webkit-scrollbar-track,
+#conversations::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+#chat::-webkit-scrollbar-thumb,
+#conversations::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+#chat::-webkit-scrollbar-thumb:hover,
+#conversations::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
 }
