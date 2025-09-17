@@ -12,10 +12,12 @@ const MAX_MESSAGES = 10000;
 const MAX_LENGTH = 350;
 let messages = [];
 
+// API: Get messages
 app.get("/api/messages", (req, res) => {
   res.json(messages);
 });
 
+// API: Post a new message
 app.post("/api/messages", (req, res) => {
   let { user, text, color } = req.body;
 
@@ -30,6 +32,7 @@ app.post("/api/messages", (req, res) => {
   if (!color) color = "#000";
 
   const newMessage = {
+    type: "message",
     user,
     text: text.trim(),
     color,
@@ -41,6 +44,7 @@ app.post("/api/messages", (req, res) => {
     messages.shift();
   }
 
+  // Broadcast to all clients
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
       client.send(JSON.stringify(newMessage));
@@ -50,6 +54,7 @@ app.post("/api/messages", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Ping endpoint
 app.get("/ping", (req, res) => res.send("pong"));
 
 const server = app.listen(PORT, () =>
@@ -58,7 +63,7 @@ const server = app.listen(PORT, () =>
 
 const wss = new WebSocketServer({ server });
 
-// Track online users
+// Broadcast online count
 function broadcastUserCount() {
   const count = [...wss.clients].filter(c => c.readyState === 1).length;
   const data = JSON.stringify({ type: "userCount", count });
