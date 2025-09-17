@@ -8,58 +8,38 @@ import fs from "fs";
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// === Resolve paths ===
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const messagesFile = path.join(__dirname, "messages.json");
 
-// === CORS allowed origins ===
-const allowedOrigins = [
-  "https://deblocked-chat.onrender.com",
-  "https://deblocked-chat.netlify.app",
-  "https://codepen.io",
-  "https://cdpn.io",
-  "http://localhost:3000",
-  "https://YOUR-REPL-URL.repl.co"
-];
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.some((o) => origin.startsWith(o))) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS: " + origin));
-      }
-    },
-    credentials: true,
-  })
-);
-
+app.use(cors());
 app.use(express.json());
 
-// === Load messages from file ===
-let messages = [];
+// === Load persisted messages ===
+let messages = {};
 try {
   if (fs.existsSync(messagesFile)) {
     messages = JSON.parse(fs.readFileSync(messagesFile, "utf-8"));
   }
 } catch (err) {
-  console.error("Error reading messages.json:", err);
+  console.error("Error loading messages.json:", err);
 }
-
-// === Save messages helper ===
 function saveMessages() {
   fs.writeFileSync(messagesFile, JSON.stringify(messages, null, 2));
 }
 
-// === API Routes ===
-app.get("/api/messages", (req, res) => {
-  res.json(messages);
+// === REST API ===
+// Get messages for a room
+app.get("/api/messages/:roomId", (req, res) => {
+  const { roomId } = req.params;
+  res.json(messages[roomId] || []);
 });
 
-app.post("/api/messages", (req, res) => {
+// Post message to a room
+app.post("/api/messages/:roomId", (req, res) => {
+  const { roomId } = req.params;
+  if (!messages[roomId]) messages[roomId] = [];
+
   const newMessage = {
     user: req.body.user || "anon",
     text: req.body.text?.slice(0, 350) || "",
@@ -68,26 +48,24 @@ app.post("/api/messages", (req, res) => {
   };
 
   if (newMessage.text.trim()) {
-    messages.push(newMessage);
+    messages[roomId].push(newMessage);
 
-    // Keep only last 150 messages
-    if (messages.length > 150) {
-      messages = messages.slice(-150);
+    // Keep last 150 per room
+    if (messages[roomId].length > 150) {
+      messages[roomId] = messages[roomId].slice(-150);
     }
 
     saveMessages();
-
-    // Broadcast to WebSocket clients
-    broadcast({ type: "message", payload: newMessage });
+    broadcast(roomId, { type: "message", payload: newMessage });
   }
 
   res.json({ status: "ok" });
 });
 
-// === Serve frontend (index.html in /public) ===
+// Serve frontend
 app.use(express.static(path.join(__dirname, "public")));
 
-// === Start server ===
+// Start server
 const server = app.listen(PORT, () =>
   console.log(`✅ Server running on port ${PORT}`)
 );
@@ -95,8 +73,8 @@ const server = app.listen(PORT, () =>
 const wss = new WebSocketServer({ server });
 
 // === Broadcast helper ===
-function broadcast(data) {
-  const str = JSON.stringify(data);
+function broadcast(roomId, data) {
+  const str = JSON.stringify({ roomId, ...data });
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
       client.send(str);
@@ -104,9 +82,9 @@ function broadcast(data) {
   });
 }
 
-// === Online counter ===
 function broadcastOnlineCount() {
-  broadcast({ type: "onlineCount", count: wss.clients.size });
+  const count = wss.clients.size;
+  broadcast("global", { type: "onlineCount", count });
 }
 
 wss.on("connection", (ws) => {
