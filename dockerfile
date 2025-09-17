@@ -1,18 +1,18 @@
 # Use Node 18
 FROM node:18
 
-# Set working dir
+# Set working directory
 WORKDIR /app
 
-# Copy package.json and install deps
+# Copy package.json and install dependencies
 COPY package*.json ./
 RUN npm install --production
 
 # Copy rest of the app
 COPY . .
 
-# Expose port
+# Expose Fly’s default port
 EXPOSE 8080
 
-# Start the server
+# Start server
 CMD ["node", "server.js"]
