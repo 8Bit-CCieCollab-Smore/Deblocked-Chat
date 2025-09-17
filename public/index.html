@@ -78,9 +78,8 @@
 
   <script src="app.js"></script>
   <script>
-    // Attach file input handler
+    // Reuse fileInput from app.js (do not redeclare it here)
     const attachBtn = document.getElementById("attachBtn");
-    const fileInput = document.getElementById("fileInput");
     attachBtn.addEventListener("click", () => fileInput.click());
 
     // Modify sendMessage to include file
