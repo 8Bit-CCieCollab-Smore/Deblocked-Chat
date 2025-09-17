@@ -1,22 +1,24 @@
 import express from "express";
+import cors from "cors";
 import { WebSocketServer } from "ws";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Allow Netlify frontend to call API
+app.use(cors());
+app.use(express.json());
+
 // Store messages in memory
 const MAX_MESSAGES = 10000;
 let messages = [];
 
-app.use(express.json());
-app.use(express.static("public")); // serve index.html
-
-// Get all messages
+// API: Get messages
 app.get("/api/messages", (req, res) => {
   res.json(messages);
 });
 
-// Post new message
+// API: Post a new message
 app.post("/api/messages", (req, res) => {
   const newMessage = {
     user: req.body.user || "anon",
@@ -39,7 +41,7 @@ app.post("/api/messages", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Ping endpoint (for keep-alive bots or uptime monitors)
+// Ping endpoint for uptime monitoring
 app.get("/ping", (req, res) => res.send("pong"));
 
 const server = app.listen(PORT, () =>
@@ -47,4 +49,3 @@ const server = app.listen(PORT, () =>
 );
 
 const wss = new WebSocketServer({ server });
-
