@@ -2,6 +2,11 @@
 <html>
 <head>
   <title>Deblocked Chat</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-bottom: 10px; }
+    #msg { width: 80%; }
+  </style>
 </head>
 <body>
   <h1>Deblocked Chat</h1>
@@ -11,23 +16,40 @@
 
   <script>
     const chat = document.getElementById("chat");
-    const socket = new WebSocket(`wss://${window.location.host}`);
+
+    // 🔗 Replace this with your Render backend URL
+    const API_URL = "https://deblocked-chat.onrender.com";
+    const WS_URL = "wss://deblocked-chat.onrender.com";
+
+    // WebSocket connection
+    const socket = new WebSocket(WS_URL);
 
     socket.onmessage = (e) => {
       const msg = JSON.parse(e.data);
-      const div = document.createElement("div");
-      div.textContent = `${msg.user}: ${msg.text}`;
-      chat.appendChild(div);
+      addMessage(`${msg.user}: ${msg.text}`);
     };
 
     function sendMessage() {
       const text = document.getElementById("msg").value;
-      fetch("/api/messages", {
+      fetch(`${API_URL}/api/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user: "me", text })
       });
+      document.getElementById("msg").value = "";
     }
+
+    function addMessage(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Load recent messages on startup
+    fetch(`${API_URL}/api/messages`)
+      .then(res => res.json())
+      .then(data => data.forEach(msg => addMessage(`${msg.user}: ${msg.text}`)));
   </script>
 </body>
 </html>
