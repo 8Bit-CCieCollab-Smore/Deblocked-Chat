@@ -1,16 +1,30 @@
+@font-face {
+  font-family: "Mona Sans";
+  src: url("https://assets.codepen.io/64/Mona-Sans.woff2")
+      format("woff2 supports variations"),
+    url("https://assets.codepen.io/64/Mona-Sans.woff2")
+      format("woff2-variations");
+  font-weight: 100 1000;
+}
+
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #546a7b;
+  font-family: "Mona Sans", Arial, sans-serif;
+  background: linear-gradient(135deg, #44576d, #2c3e50);
   color: #fff;
   height: 100vh;
   display: flex;
+}
+
+* {
+  transition: all 0.2s ease;
 }
 
 .hidden {
   display: none !important;
 }
 
+/* Welcome screen */
 .center-screen {
   display: flex;
   justify-content: center;
@@ -20,30 +34,161 @@ body {
 
 .card {
   background: #2c3e50;
-  padding: 20px;
-  border-radius: 8px;
+  padding: 30px;
+  border-radius: 12px;
   text-align: center;
-  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  width: 320px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 }
 
+.card h2 {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+
+.card p {
+  color: #ccc;
+  margin-bottom: 20px;
+}
+
+.card input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.card input:focus {
+  box-shadow: 0 0 10px rgba(76, 175, 239, 0.7);
+}
+
+/* Rainbow login button */
+.rainbow-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 600;
+  font-size: 18px;
+  padding: 0.8em 1.5em;
+  border-radius: 10px;
+  background: black;
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+  transition: transform 0.2s ease;
+}
+
+.rainbow-btn span {
+  background: linear-gradient(
+    to right,
+    white,
+    cyan,
+    blue,
+    purple,
+    pink,
+    red,
+    yellow,
+    lime,
+    white
+  );
+  background-size: 900%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: background-position 3s ease;
+  letter-spacing: 0.05em;
+}
+
+.rainbow-btn::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 12px;
+  background: linear-gradient(
+    to right,
+    white,
+    cyan,
+    blue,
+    purple,
+    pink,
+    red,
+    yellow,
+    lime,
+    white
+  );
+  background-size: 900%;
+  background-position: 100% 0;
+  z-index: -1;
+  filter: blur(15px);
+  opacity: 0.4;
+  transition: all 0.4s ease;
+}
+
+.rainbow-btn:hover {
+  transform: scale(1.05);
+}
+
+.rainbow-btn:hover span {
+  background-position: 0 0;
+}
+
+.rainbow-btn:hover::before {
+  background-position: 0 0;
+  opacity: 1;
+  filter: blur(25px);
+}
+
+.rainbow-btn:active {
+  transform: scale(0.97);
+}
+
+/* Chat Layout */
 #chat-layout {
   display: flex;
   width: 100%;
   height: 100%;
+  backdrop-filter: blur(8px);
 }
 
+/* Sidebar */
 aside#sidebar {
-  width: 300px;
-  background: #34495e;
+  width: 280px;
+  background: #2f4052;
   display: flex;
   flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 aside header {
   display: flex;
   justify-content: space-between;
-  padding: 10px;
-  background: #2c3e50;
+  align-items: center;
+  padding: 12px;
+  background: #243340;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+aside header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+aside header button {
+  background: #4cafef;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+aside header button:hover {
+  background: #3a9cd9;
 }
 
 #conversations {
@@ -52,71 +197,114 @@ aside header {
   padding: 10px;
 }
 
-#userFooter {
+#conversations .conversation {
   padding: 10px;
-  background: #2c3e50;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+#conversations .conversation:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+#userFooter {
+  padding: 12px;
+  background: #243340;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .status {
   color: #4caf50;
-  margin-left: 5px;
+  font-weight: bold;
 }
 
+/* Chat Area */
 main#chat-area {
   flex: 1;
   display: flex;
   flex-direction: column;
+  background: #44576d;
 }
 
 #chatHeader {
-  padding: 10px;
-  background: #2c3e50;
+  padding: 12px;
+  background: #243340;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 #chat {
   flex: 1;
-  padding: 10px;
+  padding: 15px;
   overflow-y: auto;
-  background: #546a7b;
+  background: #44576d;
 }
 
+/* Messages */
 .msg {
-  margin: 5px 0;
-  padding: 8px;
-  border-radius: 6px;
+  margin: 8px 0;
+  padding: 10px 14px;
+  border-radius: 12px;
   background: #2c3e50;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+  max-width: 70%;
+  word-wrap: break-word;
 }
 
+.msg span {
+  font-weight: bold;
+}
+
+/* Input bar */
 #inputBar {
   display: flex;
   padding: 10px;
-  background: #2c3e50;
+  background: #243340;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 #message {
   flex: 1;
-  padding: 8px;
-  border-radius: 6px;
+  padding: 10px;
+  border-radius: 8px;
   border: none;
+  outline: none;
+  font-size: 14px;
+}
+
+#message:focus {
+  box-shadow: 0 0 8px rgba(76, 175, 239, 0.7);
 }
 
 #sendBtn {
-  margin-left: 5px;
-  padding: 8px 12px;
+  margin-left: 8px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #4cafef;
   color: #fff;
+  font-weight: bold;
   cursor: pointer;
 }
 
+#sendBtn:hover {
+  background: #3a9cd9;
+}
+
+/* Modal */
 #modal {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -124,6 +312,8 @@ main#chat-area {
 
 .modal-content {
   background: #2c3e50;
-  padding: 20px;
-  border-radius: 8px;
+  padding: 25px;
+  border-radius: 12px;
+  width: 300px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
 }
