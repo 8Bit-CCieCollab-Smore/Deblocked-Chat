@@ -85,13 +85,17 @@ window.onload = () => {
     });
   }
 
-  loadConversations();      // builds the sidebar (only here)
-  loadMessages();           // show current room messages
+  loadConversations();
+  loadMessages();
 
   // Presence (only if logged in)
   if (username) {
     startPresence();
   }
+
+  // --- Polling for "live" updates ---
+  setInterval(loadMessages, 2000);       // messages every 2s
+  setInterval(updateOnlineCount, 10000); // online count every 10s
 };
 
 // -------- ACCOUNT --------
@@ -107,7 +111,6 @@ function createAccount() {
 function signOut() {
   if (username) {
     try {
-      // best-effort leave
       const data = new Blob([JSON.stringify({ user: username })], { type: "application/json" });
       navigator.sendBeacon?.(`${API_URL}/api/online/leave`, data);
     } catch {}
@@ -243,7 +246,7 @@ function loadConversations() {
   if (!conversationsList) return;
   conversationsList.innerHTML = "";
 
-  // Global Chat (single source of truth – no duplicates)
+  // Global Chat
   const global = document.createElement("div");
   global.className = "conversation global";
   global.innerHTML = `
@@ -275,7 +278,6 @@ function loadConversations() {
     conversationsList.appendChild(div);
   });
 
-  // After building the list, update the online count label
   updateOnlineCount();
 }
 
@@ -287,8 +289,6 @@ function switchRoom(room) {
       room === "global" ? "Global Chat" : `Chat with ${conversations[room].name}`;
   }
   loadMessages();
-
-  // optionally refresh presence ping right away
   if (room === "global") updateOnlineCount();
 }
 
@@ -337,11 +337,6 @@ function startPresence() {
   // heartbeat every 15s
   setInterval(pingOnline, 15000);
 
-  // ping when tab becomes active again
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") pingOnline();
-  });
-
   // best-effort leave on close/refresh
   window.addEventListener("beforeunload", () => {
     try {
@@ -360,8 +355,6 @@ async function pingOnline() {
       body: JSON.stringify({ user: username }),
       keepalive: true,
     });
-    // also keep the count fresh
-    updateOnlineCount();
   } catch (e) {
     console.error("Presence ping failed", e);
   }
