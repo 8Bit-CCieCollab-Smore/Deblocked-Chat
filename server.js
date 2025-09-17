@@ -11,6 +11,7 @@ app.use(express.json());
 
 // Store messages in memory
 const MAX_MESSAGES = 10000;
+const MAX_LENGTH = 350; // 🔒 Max message length
 let messages = [];
 
 // API: Get messages
@@ -22,9 +23,12 @@ app.get("/api/messages", (req, res) => {
 app.post("/api/messages", (req, res) => {
   let { user, text, color } = req.body;
 
-  // 🛑 Validation: prevent empty/spam messages
+  // 🛑 Validation: prevent empty or overly long messages
   if (!text || text.trim() === "") {
     return res.status(400).json({ error: "Message cannot be empty" });
+  }
+  if (text.length > MAX_LENGTH) {
+    return res.status(400).json({ error: `Message too long (max ${MAX_LENGTH} characters)` });
   }
 
   // Default username & color fallback
