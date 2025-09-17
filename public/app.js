@@ -1,7 +1,6 @@
-// 🔥 Replace with your actual backend URL
 const API_URL = "https://voluminous-nicolina-deblocked-a71dba13.koyeb.app";
 
-let username = null;
+let username = localStorage.getItem("username") || null;
 let currentRoom = "global";
 let conversations = JSON.parse(localStorage.getItem("conversations") || "{}");
 
@@ -11,43 +10,66 @@ window.onload = () => {
   document.getElementById("newChatBtn").onclick = () => {
     document.getElementById("modal").classList.remove("hidden");
   };
-  document.getElementById("closeModalBtn").onclick = () => {
+  document.getElementById("closeModalBtn").onclick = () =>
     document.getElementById("modal").classList.add("hidden");
-  };
   document.getElementById("startChatBtn").onclick = startChat;
   document.getElementById("closeErrorBtn").onclick = () =>
     document.getElementById("errorPopup").classList.add("hidden");
+  document.getElementById("signOutBtn").onclick = signOut;
+
+  // Restore session
+  if (username) {
+    document.getElementById("welcome-screen").classList.add("hidden");
+    document.getElementById("chat-layout").classList.remove("hidden");
+    document.getElementById("currentUser").innerText = username;
+    document.getElementById("currentUserPfp").innerText = username[0].toUpperCase();
+  }
 
   // Profile upload
   document.getElementById("pfpUpload").addEventListener("change", function(e) {
     const file = e.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(ev) {
       const pfp = document.getElementById("currentUserPfp");
       pfp.style.background = `url(${ev.target.result}) center/cover no-repeat`;
       pfp.innerText = "";
+      localStorage.setItem("pfp", ev.target.result);
     };
     reader.readAsDataURL(file);
   });
+
+  // Restore pfp if saved
+  const savedPfp = localStorage.getItem("pfp");
+  if (savedPfp) {
+    const pfp = document.getElementById("currentUserPfp");
+    pfp.style.background = `url(${savedPfp}) center/cover no-repeat`;
+    pfp.innerText = "";
+  }
 
   loadConversations();
   loadMessages();
 };
 
-// Create Account
 function createAccount() {
   const input = document.getElementById("usernameInput");
   if (!input.value.trim()) return;
   username = input.value.trim();
+  localStorage.setItem("username", username);
   document.getElementById("welcome-screen").classList.add("hidden");
   document.getElementById("chat-layout").classList.remove("hidden");
   document.getElementById("currentUser").innerText = username;
   document.getElementById("currentUserPfp").innerText = username[0].toUpperCase();
 }
 
-// Load messages
+function signOut() {
+  localStorage.clear();
+  username = null;
+  conversations = {};
+  document.getElementById("chat-layout").classList.add("hidden");
+  document.getElementById("welcome-screen").classList.remove("hidden");
+}
+
 async function loadMessages() {
   try {
     const res = await fetch(`${API_URL}/api/messages/${currentRoom}`);
@@ -64,14 +86,39 @@ function renderMessages(msgs) {
   chat.innerHTML = "";
   msgs.forEach(m => {
     const div = document.createElement("div");
-    div.className = "msg";
-    div.innerHTML = `<span>${m.user}:</span> ${m.text}`;
+    div.className = "msg " + (m.user === username ? "self" : "other");
+
+    const pfp = document.createElement("div");
+    pfp.className = "pfp";
+    pfp.innerText = m.user[0].toUpperCase();
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+
+    const meta = document.createElement("div");
+    meta.className = "meta" + (m.user === username ? " self-user" : "");
+    const time = new Date(m.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    meta.innerHTML = `<span><b>${m.user}</b></span><span>${time}</span>`;
+
+    const text = document.createElement("div");
+    text.innerText = m.text;
+
+    bubble.appendChild(meta);
+    bubble.appendChild(text);
+
+    if (m.user === username) {
+      div.appendChild(bubble);
+      div.appendChild(pfp);
+    } else {
+      div.appendChild(pfp);
+      div.appendChild(bubble);
+    }
+
     chat.appendChild(div);
   });
   chat.scrollTop = chat.scrollHeight;
 }
 
-// Send message
 async function sendMessage() {
   const input = document.getElementById("message");
   const text = input.value.trim();
@@ -96,7 +143,6 @@ async function sendMessage() {
   }
 }
 
-// DM start
 async function startChat() {
   const user = document.getElementById("newChatUser").value.trim();
   if (!user) return;
@@ -119,7 +165,6 @@ async function startChat() {
   document.getElementById("modal").classList.add("hidden");
 }
 
-// Sidebar update
 function loadConversations() {
   const list = document.getElementById("conversations");
   list.innerHTML = "";
@@ -173,7 +218,4 @@ function saveConversations() {
 }
 
 function showError(msg) {
-  document.getElementById("errorMsg").innerText = msg;
-  document.getElementById("errorPopup").classList.remove("hidden");
-
-}
+  document.getElementById("errorMsg").inner
