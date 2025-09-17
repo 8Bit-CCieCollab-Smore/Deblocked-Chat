@@ -1,146 +1,145 @@
-const API_BASE = "https://YOUR-REPL-URL.repl.co/api/messages";
-const WS_URL = "wss://YOUR-REPL-URL.repl.co";
+const API_URL = "https://YOUR-KOYEB-APP-NAME.koyeb.app"; // <-- change this
 
-let currentUser = null;
+let username = null;
 let currentRoom = "global";
-let ws;
+let conversations = JSON.parse(localStorage.getItem("conversations") || "{}");
 
-const welcomeScreen = document.getElementById("welcome-screen");
-const chatLayout = document.getElementById("chat-layout");
-const usernameInput = document.getElementById("usernameInput");
-const createAccountBtn = document.getElementById("createAccountBtn");
-const currentUserSpan = document.getElementById("currentUser");
-const conversationsDiv = document.getElementById("conversations");
-const chatHeader = document.getElementById("chatHeader");
-const chatBox = document.getElementById("chat");
-const messageInput = document.getElementById("message");
-const sendBtn = document.getElementById("sendBtn");
-const newChatBtn = document.getElementById("newChatBtn");
-const modal = document.getElementById("modal");
-const startChatBtn = document.getElementById("startChatBtn");
-const closeModalBtn = document.getElementById("closeModalBtn");
-const newChatUser = document.getElementById("newChatUser");
-
-// === Account creation ===
-createAccountBtn.addEventListener("click", () => {
-  const user = usernameInput.value.trim();
-  if (!user) return;
-  currentUser = user;
-  localStorage.setItem("username", user);
-
-  welcomeScreen.classList.add("hidden");
-  chatLayout.classList.remove("hidden");
-  currentUserSpan.textContent = user;
-
-  connectWebSocket();
-  loadMessages();
-});
-
-// === Load saved username ===
 window.onload = () => {
-  const saved = localStorage.getItem("username");
-  if (saved) {
-    currentUser = saved;
-    welcomeScreen.classList.add("hidden");
-    chatLayout.classList.remove("hidden");
-    currentUserSpan.textContent = saved;
+  document.getElementById("createAccountBtn").onclick = createAccount;
+  document.getElementById("sendBtn").onclick = sendMessage;
+  document.getElementById("newChatBtn").onclick = () => {
+    document.getElementById("modal").classList.remove("hidden");
+  };
+  document.getElementById("closeModalBtn").onclick = () => {
+    document.getElementById("modal").classList.add("hidden");
+  };
+  document.getElementById("startChatBtn").onclick = startChat;
+  document.getElementById("closeErrorBtn").onclick = () =>
+    document.getElementById("errorPopup").classList.add("hidden");
 
-    connectWebSocket();
-    loadMessages();
-  }
+  loadConversations();
+  loadMessages();
 };
 
-// === Send messages ===
-sendBtn.addEventListener("click", sendMessage);
-messageInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter" && !sendBtn.disabled) sendMessage();
-});
+// Create Account
+function createAccount() {
+  const input = document.getElementById("usernameInput");
+  if (!input.value.trim()) return;
+  username = input.value.trim();
+  document.getElementById("welcome-screen").classList.add("hidden");
+  document.getElementById("chat-layout").classList.remove("hidden");
+  document.getElementById("currentUser").innerText = username;
+  document.getElementById("currentUserPfp").innerText = username[0].toUpperCase();
+}
 
-messageInput.addEventListener("input", () => {
-  sendBtn.disabled = !messageInput.value.trim();
-});
+// Load messages
+async function loadMessages() {
+  try {
+    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`);
+    const data = await res.json();
+    renderMessages(data);
+  } catch (e) {
+    console.error(e);
+  }
+}
 
+function renderMessages(msgs) {
+  const chat = document.getElementById("chat");
+  chat.innerHTML = "";
+  msgs.forEach(m => {
+    const div = document.createElement("div");
+    div.className = "msg";
+    div.innerHTML = `<span>${m.user}:</span> ${m.text}`;
+    chat.appendChild(div);
+  });
+}
+
+// Send message
 async function sendMessage() {
-  const text = messageInput.value.trim();
+  const input = document.getElementById("message");
+  const text = input.value.trim();
   if (!text) return;
-
-  await fetch(`${API_BASE}/${currentRoom}`, {
+  const res = await fetch(`${API_URL}/api/messages/${currentRoom}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user: currentUser, text, color: assignedColor }),
+    body: JSON.stringify({ user: username, text })
   });
 
-  messageInput.value = "";
-  sendBtn.disabled = true;
+  if (res.ok) {
+    input.value = "";
+    loadMessages();
+    updateConversationPreview(currentRoom, text);
+  }
 }
 
-// === Load messages ===
-async function loadMessages() {
-  const res = await fetch(`${API_BASE}/${currentRoom}`);
-  const msgs = await res.json();
-  chatBox.innerHTML = "";
-  msgs.forEach((m) => addMessage(m.user, m.text, m.color));
+// DM start
+async function startChat() {
+  const user = document.getElementById("newChatUser").value.trim();
+  if (!user) return;
+  if (user === username) {
+    showError("You can’t DM yourself!");
+    return;
+  }
+
+  const res = await fetch(`${API_URL}/api/checkUser/${user}`);
+  if (res.status !== 200) {
+    showError("User does not exist");
+    return;
+  }
+
+  currentRoom = `dm-${[username, user].sort().join("-")}`;
+  conversations[currentRoom] = { name: user, preview: "" };
+  saveConversations();
+  loadConversations();
+  switchRoom(currentRoom);
+  document.getElementById("modal").classList.add("hidden");
 }
 
-function addMessage(user, text, color = "#fff") {
-  const div = document.createElement("div");
-  div.classList.add("msg");
-  div.innerHTML = `<span style="color:${color}; font-weight:bold">${user}</span>: ${text}`;
-  chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
+// Sidebar update
+function loadConversations() {
+  const list = document.getElementById("conversations");
+  list.innerHTML = "";
+  // Global Chat
+  const global = document.createElement("div");
+  global.className = "conversation";
+  global.innerHTML = `<div class="pfp">🌍</div><div><b>Global Chat</b><div class="preview">${conversations["global"]?.preview || ""}</div></div>`;
+  global.onclick = () => switchRoom("global");
+  list.appendChild(global);
+
+  // DMs
+  Object.keys(conversations).forEach(room => {
+    if (room === "global") return;
+    const conv = conversations[room];
+    const div = document.createElement("div");
+    div.className = "conversation";
+    div.innerHTML = `<div class="pfp">${conv.name[0].toUpperCase()}</div><div><b>${conv.name}</b><div class="preview">${conv.preview || ""}</div></div>`;
+    div.onclick = () => switchRoom(room);
+    list.appendChild(div);
+  });
 }
 
-// === Conversations ===
-function addConversation(roomId, label) {
-  const div = document.createElement("div");
-  div.textContent = label;
-  div.classList.add("conversation");
-  div.addEventListener("click", () => switchRoom(roomId, label));
-  conversationsDiv.appendChild(div);
-}
-
-function switchRoom(roomId, label) {
-  currentRoom = roomId;
-  chatHeader.textContent = label;
+function switchRoom(room) {
+  currentRoom = room;
+  document.getElementById("chatHeader").innerText =
+    room === "global" ? "Global Chat" : `Chat with ${conversations[room].name}`;
   loadMessages();
 }
 
-// Default Global Chat
-addConversation("global", "Global Chat");
-
-// === Modal for new chat ===
-newChatBtn.addEventListener("click", () => modal.classList.remove("hidden"));
-closeModalBtn.addEventListener("click", () => modal.classList.add("hidden"));
-
-startChatBtn.addEventListener("click", () => {
-  const other = newChatUser.value.trim();
-  if (!other) return;
-  const roomId = [currentUser, other].sort().join("_");
-  addConversation(roomId, `Chat with ${other}`);
-  modal.classList.add("hidden");
-  newChatUser.value = "";
-});
-
-// === WebSocket ===
-function connectWebSocket() {
-  ws = new WebSocket(WS_URL);
-  ws.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
-    if (msg.roomId !== currentRoom) return;
-
-    if (msg.type === "message") {
-      addMessage(msg.payload.user, msg.payload.text, msg.payload.color);
-    }
-  };
+function updateConversationPreview(room, text) {
+  if (!conversations[room]) {
+    conversations[room] = { name: room, preview: text };
+  } else {
+    conversations[room].preview = text;
+  }
+  saveConversations();
+  loadConversations();
 }
 
-// === Assign random color ===
-const colors = [
-  "#ff5555","#55ff55","#5555ff","#ffff55","#ff55ff","#55ffff",
-  "#ffaa00","#00ffaa","#aa00ff","#ff0077","#00aaff","#aaff00",
-  "#ffaa55","#55ffaa","#aa55ff","#77ff00","#0077ff","#ff7700",
-  "#ffcc00","#00ffcc","#cc00ff","#ff3399","#33ccff","#99ff33",
-  "#66ff99","#9966ff","#ff6666","#66ff66","#6666ff","#ff99cc",
-  "#99ccff","#ccff99"
-];
-const assignedColor = colors[Math.floor(Math.random() * colors.length)];
+function saveConversations() {
+  localStorage.setItem("conversations", JSON.stringify(conversations));
+}
+
+function showError(msg) {
+  document.getElementById("errorMsg").innerText = msg;
+  document.getElementById("errorPopup").classList.remove("hidden");
+}
