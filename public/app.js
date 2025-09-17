@@ -218,4 +218,6 @@ function saveConversations() {
 }
 
 function showError(msg) {
-  document.getElementById("errorMsg").inner
+  document.getElementById("errorMsg").innerText = msg;
+document.getElementById("errorPopup").classList.remove("hidden");
+}
