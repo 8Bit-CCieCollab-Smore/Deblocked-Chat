@@ -1,229 +1,186 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
   <title>Deblocked Chat</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #1e1e2f;
-      color: #eee;
+      background: #1e1e1e;
+      color: #fff;
+      margin: 0;
+      padding: 0;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      margin: 0;
       height: 100vh;
     }
-    h1 {
-      margin: 20px 0 10px;
-      color: #61dafb;
-    }
-    #onlineCount {
-      margin-bottom: 10px;
-      font-size: 14px;
-      color: #aaa;
-    }
-    #chat {
-      border: 1px solid #333;
-      background: #2c2c3c;
+    header {
+      background: #272727;
       padding: 10px;
-      width: 90%;
-      max-width: 800px;
+      font-size: 1.5em;
+      text-align: center;
+    }
+    #chat-box {
       flex: 1;
       overflow-y: auto;
-      margin-bottom: 10px;
-      border-radius: 8px;
+      padding: 10px;
+      background: #121212;
+      border-top: 1px solid #333;
+      border-bottom: 1px solid #333;
+      font-size: 14px;
     }
-    .msg-line { margin: 4px 0; }
-    .username { font-weight: bold; margin-right: 6px; }
+    .message {
+      margin-bottom: 6px;
+    }
+    .username {
+      font-weight: bold;
+    }
     #controls {
       display: flex;
-      flex-direction: column;
-      width: 90%;
-      max-width: 800px;
-      margin-bottom: 15px;
-    }
-    #username-container {
-      display: flex;
-      margin-bottom: 10px;
-    }
-    #username {
-      flex: 1;
       padding: 10px;
-      border: none;
-      border-radius: 6px 0 0 6px;
-      font-size: 14px;
+      background: #1e1e1e;
+      border-top: 1px solid #333;
     }
-    #setUserBtn {
-      padding: 10px 15px;
+    input[type="text"] {
+      padding: 8px;
+      margin-right: 8px;
       border: none;
-      background: #61dafb;
-      color: black;
-      font-weight: bold;
-      border-radius: 0 6px 6px 0;
+      border-radius: 4px;
+      flex: 1;
+    }
+    #send-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
       cursor: pointer;
     }
-    #inputRow {
-      display: flex;
-    }
-    #msg {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      border-radius: 6px 0 0 6px;
-      font-size: 14px;
-    }
-    #sendBtn {
-      padding: 10px 15px;
-      border: none;
-      background: #61dafb;
-      color: black;
-      font-weight: bold;
-      border-radius: 0 6px 6px 0;
-      cursor: pointer;
-    }
-    #sendBtn:disabled {
-      background: #444;
+    #send-btn:disabled {
+      background: #777;
       cursor: not-allowed;
     }
-    #charCount {
-      font-size: 12px;
-      text-align: right;
-      color: #aaa;
-      margin-top: 3px;
-    }
-    /* Mobile responsive */
-    @media (max-width: 600px) {
-      #chat { height: 50%; }
-      #username, #msg { font-size: 12px; }
-      #setUserBtn, #sendBtn { font-size: 12px; padding: 8px; }
+    #status-bar {
+      text-align: center;
+      padding: 5px;
+      font-size: 13px;
+      background: #272727;
+      border-top: 1px solid #333;
     }
   </style>
 </head>
 <body>
-  <h1>Deblocked Chat</h1>
-  <div id="onlineCount">Online: 0</div>
+  <header>Deblocked Chat</header>
 
-  <div id="chat"></div>
+  <div id="status-bar">Connecting...</div>
+
+  <div id="chat-box"></div>
 
   <div id="controls">
-    <div id="username-container">
-      <input id="username" placeholder="Enter your username" />
-      <button id="setUserBtn" onclick="setUsername()">Set</button>
-    </div>
-
-    <div id="inputRow">
-      <input id="msg" placeholder="Type a message" disabled maxlength="350" />
-      <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
-    </div>
-    <div id="charCount">0 / 350</div>
+    <input type="text" id="username" placeholder="Enter username" />
+    <input type="text" id="message" placeholder="Type a message" maxlength="350" />
+    <button id="send-btn" disabled>Send</button>
   </div>
 
   <script>
-    const chat = document.getElementById("chat");
-    const msgInput = document.getElementById("msg");
-    const sendBtn = document.getElementById("sendBtn");
-    const usernameInput = document.getElementById("username");
-    const setUserBtn = document.getElementById("setUserBtn");
-    const charCount = document.getElementById("charCount");
-    const onlineCount = document.getElementById("onlineCount");
+    // === CONFIG ===
+    const API_URL = window.location.origin; // Works when frontend + backend are on Render
+    const WS_URL = (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host;
 
-    // 🔗 Backend URLs
-    const API_URL = "https://deblocked-chat.onrender.com";
-    const WS_URL = "wss://deblocked-chat.onrender.com";
-
-    let username = null;
-    let userColor = null;
-
-    // 🎨 32 fixed colors
-    const COLORS = [
-      "#e6194b","#3cb44b","#ffe119","#4363d8","#f58231","#911eb4","#46f0f0","#f032e6",
-      "#bcf60c","#fabebe","#008080","#e6beff","#9a6324","#fffac8","#800000","#aaffc3",
-      "#808000","#ffd8b1","#000075","#808080","#ffffff","#000000",
-      "#ff7f50","#1e90ff","#32cd32","#ff1493","#00ced1","#ff4500","#daa520","#8a2be2",
-      "#deb887","#5f9ea0"
+    // === STATE ===
+    let username = "";
+    let socket;
+    const colors = [
+      "#e6194B", "#3cb44b", "#ffe119", "#4363d8",
+      "#f58231", "#911eb4", "#46f0f0", "#f032e6",
+      "#bcf60c", "#fabebe", "#008080", "#e6beff",
+      "#9A6324", "#fffac8", "#800000", "#aaffc3",
+      "#808000", "#ffd8b1", "#000075", "#808080",
+      "#ff0000", "#00ff00", "#0000ff", "#ffff00",
+      "#00ffff", "#ff00ff", "#ff8800", "#88ff00",
+      "#0088ff", "#ff0088", "#44ff44", "#8888ff"
     ];
-    function assignColor() {
-      return COLORS[Math.floor(Math.random() * COLORS.length)];
+    let userColor = colors[Math.floor(Math.random() * colors.length)];
+
+    const chatBox = document.getElementById("chat-box");
+    const usernameInput = document.getElementById("username");
+    const messageInput = document.getElementById("message");
+    const sendBtn = document.getElementById("send-btn");
+    const statusBar = document.getElementById("status-bar");
+
+    // === FUNCTIONS ===
+    function addMessage(user, text, color) {
+      const div = document.createElement("div");
+      div.classList.add("message");
+      div.innerHTML = `<span class="username" style="color:${color}">${user}:</span> ${text}`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function setUsername() {
-      if (usernameInput.value.trim() === "") return;
-      username = usernameInput.value.trim();
-      userColor = assignColor();
+    function connectSocket() {
+      socket = new WebSocket(WS_URL);
 
-      usernameInput.disabled = true;
-      setUserBtn.disabled = true;
-      msgInput.disabled = false;
+      socket.onopen = () => {
+        statusBar.textContent = "✅ Connected";
+      };
 
-      checkInput();
+      socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "onlineCount") {
+          statusBar.textContent = `👥 ${msg.count} users online`;
+        } else {
+          addMessage(msg.user, msg.text, msg.color || "#fff");
+        }
+      };
+
+      socket.onclose = () => {
+        statusBar.textContent = "❌ Disconnected. Reconnecting...";
+        setTimeout(connectSocket, 3000);
+      };
     }
 
-    msgInput.addEventListener("input", () => {
-      checkInput();
-      charCount.textContent = `${msgInput.value.length} / 350`;
+    // === EVENTS ===
+    usernameInput.addEventListener("blur", () => {
+      if (usernameInput.value.trim() && !username) {
+        username = usernameInput.value.trim();
+        usernameInput.disabled = true;
+      }
     });
 
-    msgInput.addEventListener("keydown", (e) => {
+    messageInput.addEventListener("input", () => {
+      sendBtn.disabled = messageInput.value.trim() === "" || !username;
+    });
+
+    messageInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter" && !sendBtn.disabled) {
         sendMessage();
       }
     });
 
-    function checkInput() {
-      sendBtn.disabled = msgInput.value.trim() === "" || !username;
-    }
-
-    // 🟣 WebSocket
-    const socket = new WebSocket(WS_URL);
-    socket.onmessage = (e) => {
-      const data = JSON.parse(e.data);
-      if (data.type === "userCount") {
-        onlineCount.textContent = `Online: ${data.count}`;
-      } else if (data.type === "message") {
-        addMessage(data.user, data.text, data.color);
-      }
-    };
+    sendBtn.addEventListener("click", sendMessage);
 
     function sendMessage() {
-      const text = msgInput.value.trim();
-      if (!text) return;
+      const text = messageInput.value.trim();
+      if (!text || !username) return;
 
-      fetch(`${API_URL}/api/messages`, {
+      const newMessage = { user: username, text, color: userColor };
+      fetch(API_URL + "/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: username, text, color: userColor })
+        body: JSON.stringify(newMessage)
       });
 
-      msgInput.value = "";
-      charCount.textContent = "0 / 350";
-      checkInput();
+      messageInput.value = "";
+      sendBtn.disabled = true;
     }
 
-    function addMessage(user, text, color = "#000") {
-      const div = document.createElement("div");
-      div.classList.add("msg-line");
+    // === INIT ===
+    connectSocket();
 
-      const nameSpan = document.createElement("span");
-      nameSpan.textContent = user + ": ";
-      nameSpan.style.color = color;
-      nameSpan.classList.add("username");
-
-      const textSpan = document.createElement("span");
-      textSpan.textContent = text;
-
-      div.appendChild(nameSpan);
-      div.appendChild(textSpan);
-
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    }
-
-    // 🟣 Load chat history
-    fetch(`${API_URL}/api/messages`)
+    // Load existing messages
+    fetch(API_URL + "/api/messages")
       .then(res => res.json())
-      .then(data => data.forEach(msg => addMessage(msg.user, msg.text, msg.color)));
+      .then(msgs => msgs.forEach(m => addMessage(m.user, m.text, m.color || "#fff")));
   </script>
 </body>
 </html>
