@@ -5,13 +5,12 @@ import { WebSocketServer } from "ws";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ Allowed frontend origins
+// ✅ Allowed origins (add Neocities + localhost for dev)
 const allowedOrigins = [
-  "https://deblocked-chat.netlify.app", // your Netlify site
-  "http://localhost:3000"               // optional for local dev
+  "https://deblocked.neocities.org", // your Neocities site
+  "http://localhost:3000"
 ];
 
-// ✅ Explicit CORS setup
 app.use(cors({
   origin: function(origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -24,12 +23,12 @@ app.use(cors({
 
 app.use(express.json());
 
-// 🔒 Chat config
+// 🔒 Config
 const MAX_MESSAGES = 10000;
 const MAX_LENGTH = 350;
 let messages = [];
 
-// 📥 Get chat history
+// 📥 Get history
 app.get("/api/messages", (req, res) => {
   res.json(messages);
 });
@@ -38,7 +37,6 @@ app.get("/api/messages", (req, res) => {
 app.post("/api/messages", (req, res) => {
   let { user, text, color } = req.body;
 
-  // Validation
   if (!text || text.trim() === "") {
     return res.status(400).json({ error: "Message cannot be empty" });
   }
@@ -61,7 +59,7 @@ app.post("/api/messages", (req, res) => {
     messages.shift();
   }
 
-  // Broadcast to all WebSocket clients
+  // Broadcast via WebSocket
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
       client.send(JSON.stringify(newMessage));
@@ -71,17 +69,16 @@ app.post("/api/messages", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// 🔄 Ping (for uptime bots)
+// 🔄 Keepalive ping
 app.get("/ping", (req, res) => res.send("pong"));
 
 const server = app.listen(PORT, () =>
   console.log(`✅ Server running on port ${PORT}`)
 );
 
-// 🟣 WebSocket setup
+// 🟣 WebSocket
 const wss = new WebSocketServer({ server });
 
-// Broadcast user count
 function broadcastUserCount() {
   const count = [...wss.clients].filter(c => c.readyState === 1).length;
   const data = JSON.stringify({ type: "userCount", count });
