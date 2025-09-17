@@ -1,223 +1,343 @@
-const API_URL = "https://voluminous-nicolina-deblocked-a71dba13.koyeb.app";
+// ====== CONFIG ======
+const API_BASE = window.API_BASE || ""; // same origin by default
+const WS_URL   = window.WS_URL   || ((location.protocol === "https:") ? `wss://${location.host}` : `ws://${location.host}`);
 
-let username = localStorage.getItem("username") || null;
-let currentRoom = "global";
-let conversations = JSON.parse(localStorage.getItem("conversations") || "{}");
+const GLOBAL_ROOM = "global";
 
-window.onload = () => {
-  document.getElementById("createAccountBtn").onclick = createAccount;
-  document.getElementById("sendBtn").onclick = sendMessage;
-  document.getElementById("newChatBtn").onclick = () => {
-    document.getElementById("modal").classList.remove("hidden");
-  };
-  document.getElementById("closeModalBtn").onclick = () =>
-    document.getElementById("modal").classList.add("hidden");
-  document.getElementById("startChatBtn").onclick = startChat;
-  document.getElementById("closeErrorBtn").onclick = () =>
-    document.getElementById("errorPopup").classList.add("hidden");
-  document.getElementById("signOutBtn").onclick = signOut;
+// ====== STATE ======
+let username = localStorage.getItem("username") || "";
+let avatar   = localStorage.getItem("avatar")   || ""; // data URL or http url
+let currentRoom = localStorage.getItem("currentRoom") || GLOBAL_ROOM;
+let socket;
+let rooms = new Set([GLOBAL_ROOM]); // known rooms (global + DMs)
+const unread = JSON.parse(localStorage.getItem("unread") || "{}"); // {room: true}
 
-  // Restore session
-  if (username) {
-    document.getElementById("welcome-screen").classList.add("hidden");
-    document.getElementById("chat-layout").classList.remove("hidden");
-    document.getElementById("currentUser").innerText = username;
-    document.getElementById("currentUserPfp").innerText = username[0].toUpperCase();
-  }
+// ====== ELEMENTS ======
+const $ = (s, root=document) => root.querySelector(s);
+const $$ = (s, root=document) => [...root.querySelectorAll(s)];
 
-  // Profile upload
-  document.getElementById("pfpUpload").addEventListener("change", function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-      const pfp = document.getElementById("currentUserPfp");
-      pfp.style.background = `url(${ev.target.result}) center/cover no-repeat`;
-      pfp.innerText = "";
-      localStorage.setItem("pfp", ev.target.result);
-    };
-    reader.readAsDataURL(file);
-  });
+const welcomeOverlay = $("#welcomeOverlay");
+const welcomeName    = $("#welcomeName");
+const welcomeCreate  = $("#welcomeCreate");
 
-  // Restore pfp if saved
-  const savedPfp = localStorage.getItem("pfp");
-  if (savedPfp) {
-    const pfp = document.getElementById("currentUserPfp");
-    pfp.style.background = `url(${savedPfp}) center/cover no-repeat`;
-    pfp.innerText = "";
-  }
+const topHeader      = $("#topHeader");
+const signOut        = $("#signOut");
 
-  loadConversations();
-  loadMessages();
+const conversations  = $("#conversations");
+const chatHeader     = $("#chatHeader .room");
+const chatEl         = $("#chat");
+
+const composerInput  = $("#message");
+const sendBtn        = $("#sendBtn");
+
+const newChatBtn     = $("#newChatBtn");
+const groupBtn       = $("#groupBtn");
+
+const startModal     = $("#startModal");
+const startInput     = $("#startInput");
+const startGo        = $("#startGo");
+const startCancel    = $("#startCancel");
+
+const pfpInput       = $("#pfpInput");
+const profileRow     = $("#profileRow");
+
+// ====== HELPERS ======
+const fmtTime = ts => {
+  const d = new Date(ts || Date.now());
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 };
 
-function createAccount() {
-  const input = document.getElementById("usernameInput");
-  if (!input.value.trim()) return;
-  username = input.value.trim();
-  localStorage.setItem("username", username);
-  document.getElementById("welcome-screen").classList.add("hidden");
-  document.getElementById("chat-layout").classList.remove("hidden");
-  document.getElementById("currentUser").innerText = username;
-  document.getElementById("currentUserPfp").innerText = username[0].toUpperCase();
+function convIdForUser(u){
+  // DM id is sorted combination "dm:userA_userB"
+  const a = [username, u].sort().join("_");
+  return `dm:${a}`;
 }
 
-function signOut() {
-  localStorage.clear();
-  username = null;
-  conversations = {};
-  document.getElementById("chat-layout").classList.add("hidden");
-  document.getElementById("welcome-screen").classList.remove("hidden");
+function ensureRoomItem(id, label){
+  if ($(`.conv[data-id="${id}"]`)) return;
+  const item = document.createElement("div");
+  item.className = "conv";
+  item.dataset.id = id;
+  item.innerHTML = `
+    <div class="pfp small-pfp"></div>
+    <div>
+      <div class="title">${label}</div>
+      <div class="preview small"> </div>
+    </div>
+    <span class="badge"></span>
+  `;
+  conversations.appendChild(item);
+
+  item.addEventListener("click", () => {
+    switchRoom(id);
+  });
 }
 
-async function loadMessages() {
-  try {
-    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`);
-    if (!res.ok) throw new Error("Failed to load messages");
-    const data = await res.json();
-    renderMessages(data);
-  } catch (e) {
+function setConvUnread(id, on){
+  const el = $(`.conv[data-id="${id}"]`);
+  if (!el) return;
+  el.classList.toggle("unread", !!on);
+}
+
+function saveUnread(){
+  localStorage.setItem("unread", JSON.stringify(unread));
+}
+
+function atBottom(el){
+  const slack = 80;
+  return (el.scrollHeight - el.scrollTop - el.clientHeight) < slack;
+}
+
+function scrollToBottom(el){
+  el.scrollTop = el.scrollHeight + 1000;
+}
+
+function bubbleHTML(msg){
+  // msg = {user, text, ts, color, avatar}
+  const mine = msg.user === username;
+  const pfp = msg.avatar || "";
+  const pfpNode = pfp
+    ? `<div class="pfp"><img src="${pfp}" alt=""></div>`
+    : `<div class="pfp">${(msg.user||"?").slice(0,1).toUpperCase()}</div>`;
+
+  return `
+    <div class="msg ${mine ? "me": ""}">
+      ${mine ? "" : pfpNode}
+      <div class="bubble">
+        <div class="meta"><strong style="color:${msg.color||'#9fd1ff'}">${msg.user}</strong> • ${fmtTime(msg.ts)}</div>
+        <div class="text">${escapeHTML(msg.text)}</div>
+      </div>
+      ${mine ? pfpNode.replace('class="pfp"', 'class="pfp" style="visibility:hidden"') : ""}
+    </div>
+  `;
+}
+
+function escapeHTML(s){
+  return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+function colorForUser(u){
+  // deterministic pastel hue
+  let h = 0;
+  for (let i=0;i<u.length;i++) h = (h*31 + u.charCodeAt(i)) % 360;
+  return `hsl(${h}, 70%, 70%)`;
+}
+
+// ====== UI SETUP ======
+function hydrateSidebar(){
+  conversations.innerHTML = "";
+  ensureRoomItem(GLOBAL_ROOM, "Global Chat");
+  setConvUnread(GLOBAL_ROOM, unread[GLOBAL_ROOM]);
+  // any remembered DM rooms
+  const storedRooms = JSON.parse(localStorage.getItem("rooms") || "[]");
+  storedRooms.forEach(id => rooms.add(id));
+  rooms.forEach(id => {
+    if (id !== GLOBAL_ROOM){
+      const parts = id.split(":")[1]?.split("_") || [];
+      const other = parts.find(x => x !== username) || "DM";
+      ensureRoomItem(id, `Chat with ${other}`);
+      setConvUnread(id, unread[id]);
+    }
+  });
+}
+
+function setProfileRow(){
+  const pfp = document.createElement("div");
+  pfp.className = "pfp";
+  if (avatar){
+    const img = document.createElement("img");
+    img.src = avatar;
+    pfp.appendChild(img);
+  } else {
+    pfp.textContent = (username[0]||"?").toUpperCase();
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "user-meta";
+  meta.innerHTML = `<div class="name">${username}</div><div class="status">Online</div>`;
+
+  profileRow.innerHTML = "";
+  profileRow.appendChild(pfp);
+  profileRow.appendChild(meta);
+}
+
+// ====== DATA FLOW ======
+async function loadMessages(room){
+  try{
+    const res = await fetch(`${API_BASE}/api/messages/${encodeURIComponent(room)}`);
+    const arr = await res.json();
+    renderMessages(arr);
+  }catch(e){
     console.error(e);
   }
 }
 
-function renderMessages(msgs) {
-  const chat = document.getElementById("chat");
-  chat.innerHTML = "";
-  msgs.forEach(m => {
-    const div = document.createElement("div");
-    div.className = "msg " + (m.user === username ? "self" : "other");
-
-    const pfp = document.createElement("div");
-    pfp.className = "pfp";
-    pfp.innerText = m.user[0].toUpperCase();
-
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-
-    const meta = document.createElement("div");
-    meta.className = "meta" + (m.user === username ? " self-user" : "");
-    const time = new Date(m.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    meta.innerHTML = `<span><b>${m.user}</b></span><span>${time}</span>`;
-
-    const text = document.createElement("div");
-    text.innerText = m.text;
-
-    bubble.appendChild(meta);
-    bubble.appendChild(text);
-
-    if (m.user === username) {
-      div.appendChild(bubble);
-      div.appendChild(pfp);
-    } else {
-      div.appendChild(pfp);
-      div.appendChild(bubble);
-    }
-
-    chat.appendChild(div);
-  });
-  chat.scrollTop = chat.scrollHeight;
+function renderMessages(list){
+  const nearBottom = atBottom(chatEl);
+  chatEl.innerHTML = list.map(bubbleHTML).join("");
+  if (nearBottom) scrollToBottom(chatEl);
 }
 
-async function sendMessage() {
-  const input = document.getElementById("message");
-  const text = input.value.trim();
+async function sendMessage(){
+  const text = composerInput.value.trim();
   if (!text) return;
+  const payload = {
+    user: username,
+    text,
+    color: colorForUser(username),
+    avatar,
+    room: currentRoom
+  };
+  composerInput.value = "";
 
-  try {
-    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user: username, text })
+  // optimistic append (and autoscroll)
+  const nearBottom = atBottom(chatEl);
+  chatEl.insertAdjacentHTML("beforeend", bubbleHTML({...payload, ts: Date.now()}));
+  if (nearBottom) scrollToBottom(chatEl);
+
+  try{
+    await fetch(`${API_BASE}/api/messages/${encodeURIComponent(currentRoom)}`, {
+      method:"POST",
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
     });
-
-    if (res.ok) {
-      input.value = "";
-      loadMessages();
-      updateConversationPreview(currentRoom, text);
-    } else {
-      console.error("Failed to send message", res.status);
-    }
-  } catch (e) {
-    console.error("Error sending message", e);
+  }catch(e){
+    console.error(e);
   }
 }
 
-async function startChat() {
-  const user = document.getElementById("newChatUser").value.trim();
-  if (!user) return;
-  if (user === username) {
-    showError("You can’t DM yourself!");
-    return;
-  }
+// ====== ROOMS ======
+function switchRoom(id){
+  currentRoom = id;
+  localStorage.setItem("currentRoom", id);
 
-  const res = await fetch(`${API_URL}/api/checkUser/${user}`);
-  if (res.status !== 200) {
-    showError("User does not exist");
-    return;
-  }
+  // clear unread
+  unread[id] = false; saveUnread(); setConvUnread(id, false);
+  $$(".conv").forEach(n => n.classList.toggle("active", n.dataset.id === id));
+  chatHeader.textContent = (id === GLOBAL_ROOM) ? "Global Chat" : friendlyLabel(id);
 
-  currentRoom = `dm-${[username, user].sort().join("-")}`;
-  conversations[currentRoom] = { name: user, preview: "" };
-  saveConversations();
-  loadConversations();
-  switchRoom(currentRoom);
-  document.getElementById("modal").classList.add("hidden");
+  loadMessages(id);
 }
 
-function loadConversations() {
-  const list = document.getElementById("conversations");
-  list.innerHTML = "";
+function friendlyLabel(id){
+  if (id === GLOBAL_ROOM) return "Global Chat";
+  const parts = id.split(":")[1]?.split("_") || [];
+  const other = parts.find(x => x !== username) || "Chat";
+  return `Chat with ${other}`;
+}
 
-  // Global Chat
-  const global = document.createElement("div");
-  global.className = "conversation";
-  global.innerHTML = `<div class="pfp">🌍</div><div><b>Global Chat</b><div class="preview">${conversations["global"]?.preview || ""}</div></div>`;
-  global.onclick = () => switchRoom("global");
-  list.appendChild(global);
+function rememberRoom(id){
+  rooms.add(id);
+  localStorage.setItem("rooms", JSON.stringify([...rooms]));
+}
 
-  // DMs
-  Object.keys(conversations).forEach(room => {
-    if (room === "global") return;
-    const conv = conversations[room];
-    const div = document.createElement("div");
-    div.className = "conversation";
-    div.innerHTML = `<div class="pfp">${conv.name[0].toUpperCase()}</div><div><b>${conv.name}</b><div class="preview">${conv.preview || ""}</div></div>`;
-    div.onclick = () => switchRoom(room);
-    list.appendChild(div);
+// ====== SOCKET ======
+function connectSocket(){
+  try{
+    socket = new WebSocket(WS_URL);
+  }catch(e){
+    console.warn("WebSocket failed, will keep polling via /api", e);
+    return;
+  }
+  socket.addEventListener("open", ()=> console.log("ws open"));
+  socket.addEventListener("message", (ev) => {
+    try{
+      const msg = JSON.parse(ev.data);
+      if (!msg.room) msg.room = GLOBAL_ROOM;
+
+      // If message belongs to another room, badge + preview
+      if (msg.room !== currentRoom){
+        unread[msg.room] = true; saveUnread(); setConvUnread(msg.room, true);
+        ensureRoomItem(msg.room, friendlyLabel(msg.room));
+        $(`.conv[data-id="${msg.room}"] .preview`)?.replaceChildren(
+          document.createTextNode(`${msg.user}: ${msg.text.slice(0,40)}`)
+        );
+        return;
+      }
+
+      // append to current room
+      const nearBottom = atBottom(chatEl);
+      chatEl.insertAdjacentHTML("beforeend", bubbleHTML(msg));
+      if (nearBottom || msg.user === username) scrollToBottom(chatEl);
+    }catch(e){}
   });
+  socket.addEventListener("close", ()=> console.log("ws closed"));
 }
 
-function switchRoom(room) {
-  currentRoom = room;
-  const chatArea = document.getElementById("chat");
+// ====== EVENTS ======
+sendBtn.addEventListener("click", sendMessage);
+composerInput.addEventListener("keydown", (e)=>{ if (e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 
-  if (room === "global") {
-    document.getElementById("chatHeader").innerText = "Global Chat";
-    chatArea.className = "";
-  } else {
-    document.getElementById("chatHeader").innerText = `Chat with ${conversations[room].name}`;
-    chatArea.className = "dm-chat";
+newChatBtn?.addEventListener("click", ()=> {
+  startModal.classList.add("show");
+  startInput.value = "";
+  startInput.focus();
+});
+groupBtn?.addEventListener("click", ()=> {
+  startModal.classList.add("show");
+  startInput.placeholder = "Enter username to DM";
+  startInput.focus();
+});
+startCancel.addEventListener("click", ()=> startModal.classList.remove("show"));
+startGo.addEventListener("click", ()=>{
+  const other = startInput.value.trim();
+  if (!other || other === username) return;
+  const id = convIdForUser(other);
+  ensureRoomItem(id, friendlyLabel(id));
+  rememberRoom(id);
+  startModal.classList.remove("show");
+  switchRoom(id);
+});
+
+pfpInput?.addEventListener("change", (e)=>{
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    avatar = rd.result;
+    localStorage.setItem("avatar", avatar);
+    setProfileRow();
+  };
+  rd.readAsDataURL(file);
+});
+
+signOut.addEventListener("click", ()=>{
+  localStorage.removeItem("username");
+  localStorage.removeItem("avatar");
+  localStorage.removeItem("rooms");
+  localStorage.removeItem("currentRoom");
+  localStorage.removeItem("unread");
+  location.reload();
+});
+
+// Welcome create (force refresh after save)
+welcomeCreate?.addEventListener("click", ()=>{
+  const u = (welcomeName.value||"").trim();
+  if (!u) return;
+  username = u;
+  localStorage.setItem("username", username);
+  localStorage.setItem("currentRoom", GLOBAL_ROOM);
+  setTimeout(()=> location.reload(), 60); // tiny delay to flush storage
+});
+
+// ====== INIT ======
+async function init(){
+  if (!username){
+    // show welcome
+    welcomeOverlay.classList.remove("hidden");
+    welcomeName.focus();
+    return;
   }
+  welcomeOverlay.classList.add("hidden");
 
-  loadMessages();
-}
+  hydrateSidebar();
+  setProfileRow();
+  connectSocket();
 
-function updateConversationPreview(room, text) {
-  if (!conversations[room]) {
-    conversations[room] = { name: room, preview: text };
-  } else {
-    conversations[room].preview = text;
-  }
-  saveConversations();
-  loadConversations();
-}
+  // initial load of current room
+  switchRoom(currentRoom);
 
-function saveConversations() {
-  localStorage.setItem("conversations", JSON.stringify(conversations));
+  // Poll fallback if no WebSocket
+  setInterval(()=> loadMessages(currentRoom), 10000);
 }
-
-function showError(msg) {
-  document.getElementById("errorMsg").innerText = msg;
-document.getElementById("errorPopup").classList.remove("hidden");
-}
+init();
