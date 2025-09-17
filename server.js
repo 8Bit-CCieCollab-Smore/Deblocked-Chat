@@ -5,31 +5,28 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
-// === CORS allowed origins ===
+// === Allowed CORS origins ===
 const allowedOrigins = [
-  "https://deblocked-chat.onrender.com", // Render frontend
-  "https://deblocked-chat.netlify.app",  // Netlify frontend
-  "https://codepen.io",                  // CodePen editor
-  "https://cdpn.io",                     // CodePen fullpage + debug
-  "http://localhost:3000"                // Local dev
+  "https://deblocked-chat.onrender.com",
+  "https://deblocked-chat.netlify.app",
+  "https://codepen.io",
+  "https://cdpn.io",
+  "http://localhost:3000"
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow server-to-server requests (like Postman) with no origin
-      if (!origin) return callback(null, true);
-
-      // Check if request origin starts with an allowed origin
-      if (allowedOrigins.some(o => origin.startsWith(o))) {
+      if (!origin) return callback(null, true); // allow server-to-server calls
+      if (allowedOrigins.some((o) => origin.startsWith(o))) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS: " + origin));
       }
     },
-    credentials: true
+    credentials: true,
   })
 );
 
@@ -47,7 +44,7 @@ app.get("/api/messages", (req, res) => {
 app.post("/api/messages", (req, res) => {
   const newMessage = {
     user: req.body.user || "anon",
-    text: req.body.text?.slice(0, 350) || "", // cap 350 chars
+    text: req.body.text?.slice(0, 350) || "", // enforce 350-char cap
     color: req.body.color || "#fff",
     timestamp: Date.now(),
   };
@@ -58,12 +55,8 @@ app.post("/api/messages", (req, res) => {
       messages.shift();
     }
 
-    // Broadcast new message
-    wss.clients.forEach((client) => {
-      if (client.readyState === 1) {
-        client.send(JSON.stringify(newMessage));
-      }
-    });
+    // Broadcast new message to all WS clients
+    broadcast({ type: "message", payload: newMessage });
   }
 
   res.json({ status: "ok" });
@@ -81,15 +74,19 @@ const server = app.listen(PORT, () =>
 
 const wss = new WebSocketServer({ server });
 
-// === WebSocket connection tracking ===
-function broadcastOnlineCount() {
-  const count = wss.clients.size;
-  const msg = JSON.stringify({ type: "onlineCount", count });
+// === Broadcast helper ===
+function broadcast(data) {
+  const str = JSON.stringify(data);
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
-      client.send(msg);
+      client.send(str);
     }
   });
+}
+
+// === Online counter ===
+function broadcastOnlineCount() {
+  broadcast({ type: "onlineCount", count: wss.clients.size });
 }
 
 wss.on("connection", (ws) => {
