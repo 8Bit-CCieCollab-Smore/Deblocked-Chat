@@ -1,173 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Deblocked Chat</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #1e1e2f;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-
-    header {
-      padding: 10px;
-      text-align: center;
-      background: #2c2c3c;
-      font-size: 18px;
-    }
-
-    #chat {
-      flex: 1;
-      padding: 10px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .msg {
-      padding: 8px 12px;
-      border-radius: 8px;
-      max-width: 70%;
-      word-wrap: break-word;
-      background: #2c2c3c;
-    }
-
-    .msg span {
-      font-weight: bold;
-    }
-
-    #inputBar {
-      display: flex;
-      padding: 10px;
-      background: #2c2c3c;
-      gap: 5px;
-    }
-
-    #username, #message {
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      flex: 1;
-    }
-
-    #sendBtn {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 6px;
-      background: #4cafef;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    #sendBtn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    @media (max-width: 600px) {
-      #message {
-        flex: 2;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    🟢 Deblocked Chat (<span id="onlineCount">0</span> online)
-  </header>
-
-  <div id="chat"></div>
-
-  <div id="inputBar">
-    <input id="username" placeholder="Username" />
-    <input id="message" placeholder="Type a message..." />
-    <button id="sendBtn" disabled>Send</button>
+  <!-- Welcome Screen -->
+  <div id="welcome-screen" class="center-screen">
+    <div class="card">
+      <h2>Welcome!</h2>
+      <p>Create your account</p>
+      <input id="usernameInput" placeholder="Enter username" />
+      <button id="createAccountBtn">Create Account</button>
+    </div>
   </div>
 
-  <script>
-    const chatBox = document.getElementById("chat");
-    const usernameInput = document.getElementById("username");
-    const messageInput = document.getElementById("message");
-    const sendBtn = document.getElementById("sendBtn");
-    const onlineCount = document.getElementById("onlineCount");
+  <!-- Chat Layout -->
+  <div id="chat-layout" class="hidden">
+    <aside id="sidebar">
+      <header>
+        <h3>Messages</h3>
+        <button id="newChatBtn">+</button>
+      </header>
+      <div id="conversations"></div>
+      <footer id="userFooter">
+        <span id="currentUser"></span> <span class="status">Online</span>
+      </footer>
+    </aside>
 
-    const API_URL = "https://YOUR-REPL-URL.repl.co/api/messages";
-    const WS_URL = "wss://YOUR-REPL-URL.repl.co";
+    <main id="chat-area">
+      <header id="chatHeader">Global Chat</header>
+      <div id="chat"></div>
+      <div id="inputBar">
+        <input id="message" placeholder="Type a message..." />
+        <button id="sendBtn" disabled>Send</button>
+      </div>
+    </main>
+  </div>
 
-    // Enable send only if message not empty
-    messageInput.addEventListener("input", () => {
-      sendBtn.disabled = !messageInput.value.trim();
-    });
+  <!-- Modal -->
+  <div id="modal" class="hidden">
+    <div class="modal-content">
+      <h3>Start New Chat</h3>
+      <input id="newChatUser" placeholder="Enter username..." />
+      <button id="startChatBtn">Start Chat</button>
+      <button id="closeModalBtn">Cancel</button>
+    </div>
+  </div>
 
-    sendBtn.addEventListener("click", sendMessage);
-    messageInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter" && !sendBtn.disabled) sendMessage();
-    });
-
-    function addMessage(user, text, color = "#fff") {
-      const div = document.createElement("div");
-      div.classList.add("msg");
-      div.innerHTML = `<span style="color:${color}">${user}</span>: ${text}`;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    async function sendMessage() {
-      const user = usernameInput.value.trim() || "anon";
-      const text = messageInput.value.trim();
-      if (!text) return;
-
-      // Wait for backend response (fixes undefined bug)
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, text, color: assignedColor })
-      });
-      await res.json();
-
-      messageInput.value = "";
-      sendBtn.disabled = true;
-    }
-
-    // Load old messages
-    async function loadMessages() {
-      const res = await fetch(API_URL);
-      const msgs = await res.json();
-      chatBox.innerHTML = "";
-      msgs.forEach(m => addMessage(m.user, m.text, m.color));
-    }
-
-    loadMessages();
-
-    // WebSocket for live updates
-    const ws = new WebSocket(WS_URL);
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === "onlineCount") {
-        onlineCount.textContent = msg.count;
-      } else if (msg.type === "message") {
-        addMessage(msg.payload.user, msg.payload.text, msg.payload.color);
-      }
-    };
-
-    // === Assign random user color ===
-    const colors = [
-      "#ff5555","#55ff55","#5555ff","#ffff55","#ff55ff","#55ffff",
-      "#ffaa00","#00ffaa","#aa00ff","#ff0077","#00aaff","#aaff00",
-      "#ffaa55","#55ffaa","#aa55ff","#77ff00","#0077ff","#ff7700",
-      "#ffcc00","#00ffcc","#cc00ff","#ff3399","#33ccff","#99ff33",
-      "#66ff99","#9966ff","#ff6666","#66ff66","#6666ff","#ff99cc",
-      "#99ccff","#ccff99"
-    ];
-    const assignedColor = colors[Math.floor(Math.random() * colors.length)];
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>
