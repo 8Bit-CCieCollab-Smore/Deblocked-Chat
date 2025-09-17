@@ -1,7 +1,7 @@
 const API_URL = "https://deblocked-chat-production.up.railway.app";
 
 let username = localStorage.getItem("username") || null;
-let currentRoom = "global";
+let currentRoom = localStorage.getItem("currentRoom") || "global";
 let conversations = JSON.parse(localStorage.getItem("conversations") || "{}");
 let avatar = localStorage.getItem("avatar") || null;
 
@@ -30,12 +30,14 @@ const conversationsList = $("conversations");
 const chatHeader = $("chatHeader");
 const signOutBtn = $("signOutBtn");
 const pfpUpload = $("pfpUpload");
-const fileInput = $("fileInput"); // optional input for files/images
+const fileInput = $("fileInput"); 
+const attachBtn = $("attachBtn");
 
 // --- INIT ---
 window.onload = async () => {
   if (createAccountBtn) createAccountBtn.onclick = createAccount;
   if (sendBtn) sendBtn.onclick = sendMessage;
+  if (attachBtn && fileInput) attachBtn.onclick = () => fileInput.click();
 
   if (messageInput) {
     messageInput.addEventListener("keydown", e => {
@@ -62,7 +64,6 @@ window.onload = async () => {
       else currentUserPfp.innerText = username[0].toUpperCase();
     }
 
-    // Load existing DM rooms from server
     await loadUserRooms();
   }
 
@@ -151,13 +152,13 @@ function renderMessages(msgs) {
     text.innerText = m.text || "";
 
     bubble.appendChild(meta);
-    bubble.appendChild(text);
+    if (m.text) bubble.appendChild(text);
 
     // File/Image
     if (m.file) {
       const fileEl = document.createElement("div");
       fileEl.style.marginTop = "6px";
-      if (m.fileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      if (m.file.startsWith("data:image")) {
         const img = document.createElement("img");
         img.src = m.file;
         img.style.maxWidth = "200px";
@@ -221,7 +222,7 @@ async function sendPayload(payload) {
     });
     if (res.ok) {
       loadMessages();
-      updateConversationPreview(currentRoom, payload.text || payload.fileName);
+      updateConversationPreview(currentRoom, payload.text || payload.fileName || "[File]");
     } else console.error("Failed to send message", res.status);
   } catch (e) {
     console.error("Error sending message", e);
@@ -239,7 +240,6 @@ async function startChat() {
     const res = await fetch(`${API_URL}/api/checkUser/${user}`);
     if (res.status !== 200) { showError("User does not exist"); return; }
 
-    // create DM room
     const create = await fetch(`${API_URL}/api/dm/create`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
