@@ -5,25 +5,20 @@ import { WebSocketServer } from "ws";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Allow Netlify frontend to call API
 app.use(cors());
 app.use(express.json());
 
-// Store messages in memory
 const MAX_MESSAGES = 10000;
-const MAX_LENGTH = 350; // 🔒 Max message length
+const MAX_LENGTH = 350;
 let messages = [];
 
-// API: Get messages
 app.get("/api/messages", (req, res) => {
   res.json(messages);
 });
 
-// API: Post a new message
 app.post("/api/messages", (req, res) => {
   let { user, text, color } = req.body;
 
-  // 🛑 Validation: prevent empty or overly long messages
   if (!text || text.trim() === "") {
     return res.status(400).json({ error: "Message cannot be empty" });
   }
@@ -31,7 +26,6 @@ app.post("/api/messages", (req, res) => {
     return res.status(400).json({ error: `Message too long (max ${MAX_LENGTH} characters)` });
   }
 
-  // Default username & color fallback
   if (!user || user.trim() === "") user = "anon";
   if (!color) color = "#000";
 
@@ -47,7 +41,6 @@ app.post("/api/messages", (req, res) => {
     messages.shift();
   }
 
-  // Broadcast to all connected WebSocket clients
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
       client.send(JSON.stringify(newMessage));
@@ -57,7 +50,6 @@ app.post("/api/messages", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Ping endpoint for uptime monitoring
 app.get("/ping", (req, res) => res.send("pong"));
 
 const server = app.listen(PORT, () =>
@@ -65,3 +57,17 @@ const server = app.listen(PORT, () =>
 );
 
 const wss = new WebSocketServer({ server });
+
+// Track online users
+function broadcastUserCount() {
+  const count = [...wss.clients].filter(c => c.readyState === 1).length;
+  const data = JSON.stringify({ type: "userCount", count });
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1) client.send(data);
+  });
+}
+
+wss.on("connection", (ws) => {
+  broadcastUserCount();
+  ws.on("close", broadcastUserCount);
+});
