@@ -48,7 +48,10 @@
       <div id="inputBar">
         <input type="text" id="message" placeholder="Type a message..." />
         <input type="file" id="fileInput" accept="image/*,.pdf,.txt" style="display:none;" />
-        <button id="attachBtn" title="Attach File">📎</button>
+        <!-- New attach button with icon -->
+        <button id="attachBtn" title="Attach File" class="icon-btn">
+          <img src="https://cdn-icons-png.flaticon.com/128/13727/13727342.png" alt="attach" class="icon-img"/>
+        </button>
         <button id="sendBtn">
           <img src="https://cdn-icons-png.flaticon.com/128/1933/1933005.png" alt="send" class="send-icon"/>
         </button>
@@ -79,7 +82,7 @@
   <!-- Scripts -->
   <script src="app.js"></script>
   <script>
-    // Attach file input handler (use the one from app.js)
+    // Attach file input handler
     const attachBtn = document.getElementById("attachBtn");
     attachBtn.addEventListener("click", () => fileInput.click());
 
