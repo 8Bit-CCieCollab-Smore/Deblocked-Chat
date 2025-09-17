@@ -1,1 +1,27 @@
-flyctl launch
+# fly.toml file for deblocked-chat
+app = "deblocked-chat"
+primary_region = "ord"   # you can change region (ord=Chicago, lhr=London, etc.)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    interval = 10000
+    timeout = 2000
+    grace_period = "10s"
+    restart_limit = 0
