@@ -1,11 +1,12 @@
 const API_URL = "https://voluminous-nicolina-deblocked-a71dba13.koyeb.app";
+const WS_URL = "wss://voluminous-nicolina-deblocked-a71dba13.koyeb.app"; // backend WS
 
 let username = localStorage.getItem("username") || null;
 let currentRoom = "global";
 let conversations = JSON.parse(localStorage.getItem("conversations") || "{}");
 let avatar = localStorage.getItem("avatar") || null;
 let banner = localStorage.getItem("banner") || null;
-let onlineUsers = JSON.parse(localStorage.getItem("onlineUsers") || "{}");
+let onlineUsers = {}; // managed via WebSocket
 
 const $ = (id) => document.getElementById(id);
 
@@ -45,34 +46,36 @@ const dmUserBtn = $("dmUserBtn");
 const profileMsgInput = $("profileMsgInput");
 
 let viewedUser = null;
+let ws;
 
-// -------- ONLINE STATUS HELPERS --------
-function markOnline(user) {
-  onlineUsers[user] = Date.now();
-  localStorage.setItem("onlineUsers", JSON.stringify(onlineUsers));
-}
+// -------- WEBSOCKET --------
+function connectWebSocket() {
+  if (!username) return;
 
-function isUserOnline(user) {
-  const lastSeen = onlineUsers[user];
-  if (!lastSeen) return false;
-  return Date.now() - lastSeen < 120000; // 2 min threshold
-}
+  ws = new WebSocket(WS_URL);
 
-// Heartbeat every 20s
-setInterval(() => {
-  if (username) {
-    markOnline(username);
-  }
-  // prune old users after 5 min
-  Object.keys(onlineUsers).forEach((u) => {
-    if (Date.now() - onlineUsers[u] > 300000) {
-      delete onlineUsers[u];
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "presence", user: username }));
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === "presenceUpdate") {
+        onlineUsers = msg.users;
+        loadMessages();
+        loadConversations();
+        if (viewedUser) updateProfileStatus(viewedUser);
+      }
+    } catch (e) {
+      console.error("WS error:", e);
     }
-  });
-  localStorage.setItem("onlineUsers", JSON.stringify(onlineUsers));
-  loadMessages();
-  loadConversations();
-}, 20000);
+  };
+
+  ws.onclose = () => {
+    setTimeout(connectWebSocket, 5000); // auto-reconnect
+  };
+}
 
 // -------- INIT --------
 window.onload = () => {
@@ -106,7 +109,7 @@ window.onload = () => {
         currentUserPfp.innerText = username[0].toUpperCase();
       }
     }
-    markOnline(username);
+    connectWebSocket();
   }
 
   // PFP upload
@@ -156,6 +159,7 @@ function signOut() {
   username = null;
   conversations = {};
   avatar = null;
+  if (ws) ws.close();
   chatLayout?.classList.add("hidden");
   welcomeScreen?.classList.remove("hidden");
 }
@@ -182,11 +186,18 @@ function renderMessages(msgs) {
 
     const pfp = document.createElement("div");
     pfp.className = "pfp";
+
     if (m.avatar) {
       pfp.innerHTML = `<img src="${m.avatar}" alt="pfp">`;
     } else {
       pfp.innerText = m.user[0].toUpperCase();
     }
+
+    const dot = document.createElement("div");
+    dot.className =
+      "status-dot " + (onlineUsers[m.user] ? "online" : "offline");
+    pfp.appendChild(dot);
+
     pfp.onclick = () => {
       openProfile(m.user, m.avatar, m.banner);
     };
@@ -196,10 +207,9 @@ function renderMessages(msgs) {
 
     const meta = document.createElement("div");
     meta.className = "meta" + (m.user === username ? " self-user" : "");
-    const isOnline = isUserOnline(m.user);
     meta.innerHTML = `<span><b>${m.user}</b></span><span class="${
-      isOnline ? "online" : "offline"
-    }">${isOnline ? "Online" : "Offline"}</span>`;
+      onlineUsers[m.user] ? "online" : "offline"
+    }">${onlineUsers[m.user] ? "Online" : "Offline"}</span>`;
 
     const text = document.createElement("div");
     text.innerText = m.text;
@@ -242,7 +252,9 @@ async function sendMessage() {
 
     if (res.ok) {
       messageInput.value = "";
-      markOnline(username);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "presence", user: username }));
+      }
       loadMessages();
       updateConversationPreview(currentRoom, text);
     } else {
@@ -290,10 +302,16 @@ function loadConversations() {
   const global = document.createElement("div");
   global.className = "conversation";
   global.dataset.room = "global";
-  const globalOnline = isUserOnline("global");
-  global.innerHTML = `<div class="pfp">🌍</div><div><b>Global Chat</b><div class="preview">${
-    conversations["global"]?.preview || ""
-  }</div></div><span class="badge"></span>`;
+  global.innerHTML = `
+    <div class="pfp">
+      🌍
+      <div class="status-dot online"></div>
+    </div>
+    <div>
+      <b>Global Chat</b>
+      <div class="preview">${conversations["global"]?.preview || ""}</div>
+    </div>
+    <span class="badge"></span>`;
   global.onclick = () => {
     switchRoom("global");
     setUnread("global", false);
@@ -304,13 +322,19 @@ function loadConversations() {
   Object.keys(conversations).forEach((room) => {
     if (room === "global") return;
     const conv = conversations[room];
+    const isOn = onlineUsers[conv.name];
     const div = document.createElement("div");
     div.className = "conversation";
     div.dataset.room = room;
-    const isOnline = isUserOnline(conv.name);
-    div.innerHTML = `<div class="pfp">${conv.name[0].toUpperCase()}</div>
-      <div><b>${conv.name}</b>
-      <div class="preview">${conv.preview || ""}</div></div>
+    div.innerHTML = `
+      <div class="pfp">
+        ${conv.name[0].toUpperCase()}
+        <div class="status-dot ${isOn ? "online" : "offline"}"></div>
+      </div>
+      <div>
+        <b>${conv.name}</b>
+        <div class="preview">${conv.preview || ""}</div>
+      </div>
       <span class="badge"></span>`;
     div.onclick = () => {
       switchRoom(room);
@@ -374,10 +398,18 @@ function openProfile(user, avatarUrl, bannerUrl) {
     profilePfp.innerText = user[0].toUpperCase();
   }
 
-  const isOnline = isUserOnline(user);
+  const dot = document.createElement("div");
+  dot.className = "status-dot " + (onlineUsers[user] ? "online" : "offline");
+  profilePfp.appendChild(dot);
+
+  updateProfileStatus(user);
+}
+
+function updateProfileStatus(user) {
   profileUsername.innerText = user;
-  profileStatus.innerText = isOnline ? "Online" : "Offline";
-  profileStatus.className = "profile-status " + (isOnline ? "online" : "offline");
+  profileStatus.innerText = onlineUsers[user] ? "Online" : "Offline";
+  profileStatus.className =
+    "profile-status " + (onlineUsers[user] ? "online" : "offline");
 }
 
 function closeProfile() {
