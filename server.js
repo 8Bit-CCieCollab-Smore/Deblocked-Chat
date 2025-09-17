@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3000;
 const allowedOrigins = [
   "https://deblocked-chat.onrender.com", // Render frontend
   "https://codepen.io",                  // CodePen editor
+  "https://deblocked-chat.netlify.app",  // Netlify frontend
   "https://cdpn.io",                     // CodePen fullpage + debug
   "http://localhost:3000"                // Local dev
 ];
