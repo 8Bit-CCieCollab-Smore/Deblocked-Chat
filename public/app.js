@@ -82,9 +82,39 @@ window.onload = () => {
     });
   }
 
-  loadConversations();
-  loadMessages();
-};
+loadConversations();
+
+const global = document.createElement("div");
+global.className = "conversation global";
+global.innerHTML = `
+  <div class="pfp">🌍</div>
+  <div>
+    <b class="title">Global Chat</b>
+    <div class="preview">${conversations["global"]?.preview || ""}</div>
+  </div>
+  <span class="badge"></span>
+`;
+global.onclick = () => switchRoom("global");
+conversationsList.appendChild(global);
+
+// --- Online users ---
+async function updateOnlineCount() {
+  try {
+    const res = await fetch(`${API_URL}/api/online`);
+    if (!res.ok) throw new Error("Failed to fetch online count");
+    const { count } = await res.json();
+
+    // update sidebar tab
+    const globalTabTitle = document.querySelector(
+      "#conversations .conversation.global .title"
+    );
+    if (globalTabTitle) {
+      globalTabTitle.innerText = `Global Chat - ${count} Online`;
+    }
+  } catch (e) {
+    console.error("Error updating online count", e);
+  }
+}
 
 // -------- ACCOUNT --------
 function createAccount() {
@@ -115,6 +145,21 @@ async function loadMessages() {
     renderMessages(data);
   } catch (e) {
     console.error(e);
+  }
+}
+
+async function updateOnlineCount() {
+  try {
+    const res = await fetch(`${API_URL}/api/online`);
+    if (!res.ok) throw new Error("Failed to fetch online count");
+    const { count } = await res.json();
+
+    const globalTab = document.querySelector("#conversations .conversation.global");
+    if (globalTab) {
+      globalTab.querySelector(".title").innerText = `Global Chat - ${count} Online`;
+    }
+  } catch (e) {
+    console.error("Error updating online count", e);
   }
 }
 
