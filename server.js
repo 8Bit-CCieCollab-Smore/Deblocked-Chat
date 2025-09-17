@@ -20,9 +20,21 @@ app.get("/api/messages", (req, res) => {
 
 // API: Post a new message
 app.post("/api/messages", (req, res) => {
+  let { user, text, color } = req.body;
+
+  // 🛑 Validation: prevent empty/spam messages
+  if (!text || text.trim() === "") {
+    return res.status(400).json({ error: "Message cannot be empty" });
+  }
+
+  // Default username & color fallback
+  if (!user || user.trim() === "") user = "anon";
+  if (!color) color = "#000";
+
   const newMessage = {
-    user: req.body.user || "anon",
-    text: req.body.text,
+    user,
+    text: text.trim(),
+    color,
     timestamp: Date.now(),
   };
 
@@ -31,7 +43,7 @@ app.post("/api/messages", (req, res) => {
     messages.shift();
   }
 
-  // Broadcast to WebSocket clients
+  // Broadcast to all connected WebSocket clients
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
       client.send(JSON.stringify(newMessage));
