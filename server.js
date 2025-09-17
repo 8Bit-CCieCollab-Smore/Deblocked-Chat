@@ -1,70 +1,91 @@
-import express from "express";
-import cors from "cors";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+const express = require("express");
+const path = require("path");
+const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
-const MAX_MESSAGES = 150;
-let messages = { global: [] };
-let users = new Set();
+// --- In-memory stores ---
+const rooms = { global: [] };            // room -> [{user,text,avatar,timestamp}]
+const onlineUsers = new Map();           // username -> lastSeenTimestamp (ms)
 
-// Load from file (optional)
-const dataFile = path.join(__dirname, "messages.json");
-if (fs.existsSync(dataFile)) {
-  messages = JSON.parse(fs.readFileSync(dataFile));
+// --- Helpers ---
+function pruneOldOnline(thresholdMs = 30000) {
+  const now = Date.now();
+  for (const [user, ts] of onlineUsers.entries()) {
+    if (now - ts > thresholdMs) {
+      onlineUsers.delete(user);
+    }
+  }
 }
 
-// Get messages for room
+function onlineCount() {
+  pruneOldOnline();
+  return onlineUsers.size;
+}
+
+// --- Messages API ---
 app.get("/api/messages/:room", (req, res) => {
   const { room } = req.params;
-  res.json(messages[room] || []);
+  if (!rooms[room]) rooms[room] = [];
+  res.json(rooms[room]);
 });
 
-// Post new message
 app.post("/api/messages/:room", (req, res) => {
   const { room } = req.params;
-  const { user, text } = req.body;
-  if (!messages[room]) messages[room] = [];
-  const msg = { user, text, timestamp: Date.now() };
-  messages[room].push(msg);
-  if (messages[room].length > MAX_MESSAGES) {
-    messages[room].shift();
-  }
-  fs.writeFileSync(dataFile, JSON.stringify(messages, null, 2));
-  users.add(user);
-  res.json({ status: "ok" });
+  const { user, text, avatar, timestamp } = req.body || {};
+  if (!user || !text) return res.status(400).json({ error: "user and text required" });
+
+  if (!rooms[room]) rooms[room] = [];
+  rooms[room].push({
+    user,
+    text,
+    avatar: avatar || null,
+    timestamp: timestamp || Date.now(),
+  });
+  // keep last 200 messages per room
+  if (rooms[room].length > 200) rooms[room] = rooms[room].slice(-200);
+
+  res.json({ ok: true });
 });
 
-// Check if user exists
-app.get("/api/checkUser/:name", (req, res) => {
-  const { name } = req.params;
-  if (users.has(name)) {
-    res.json({ exists: true });
-  } else {
-    res.status(404).json({ exists: false });
-  }
+// --- Check user (very permissive for now) ---
+app.get("/api/checkUser/:user", (req, res) => {
+  const { user } = req.params;
+  if (!user || !user.trim()) return res.status(400).json({ exists: false });
+  // If you'd rather require "online", uncomment below:
+  // pruneOldOnline();
+  // return onlineUsers.has(user) ? res.json({ exists: true }) : res.status(404).json({ exists: false });
+  return res.json({ exists: true });
 });
 
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+// --- Presence API ---
+app.post("/api/online/ping", (req, res) => {
+  const { user } = req.body || {};
+  if (!user) return res.status(400).json({ error: "user required" });
+  onlineUsers.set(user, Date.now());
+  res.json({ count: onlineCount() });
+});
 
-let onlineUsers = new Set();
-
-app.post("/api/online", (req, res) => {
-  const { user } = req.body;
-  if (user) onlineUsers.add(user);
-  res.json({ count: onlineUsers.size });
+app.post("/api/online/leave", (req, res) => {
+  const { user } = req.body || {};
+  if (user) onlineUsers.delete(user);
+  res.json({ ok: true, count: onlineCount() });
 });
 
 app.get("/api/online", (req, res) => {
-  res.json({ count: onlineUsers.size });
+  res.json({ count: onlineCount() });
+});
+
+// --- Fallback to index.html (optional SPA behavior) ---
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });
