@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deblocked Chat</title>
   <style>
     body {
@@ -127,12 +129,14 @@
     const charCount = document.getElementById("charCount");
     const onlineCount = document.getElementById("onlineCount");
 
+    // 🔗 Backend URLs
     const API_URL = "https://deblocked-chat.onrender.com";
     const WS_URL = "wss://deblocked-chat.onrender.com";
 
     let username = null;
     let userColor = null;
 
+    // 🎨 32 fixed colors
     const COLORS = [
       "#e6194b","#3cb44b","#ffe119","#4363d8","#f58231","#911eb4","#46f0f0","#f032e6",
       "#bcf60c","#fabebe","#008080","#e6beff","#9a6324","#fffac8","#800000","#aaffc3",
@@ -140,7 +144,6 @@
       "#ff7f50","#1e90ff","#32cd32","#ff1493","#00ced1","#ff4500","#daa520","#8a2be2",
       "#deb887","#5f9ea0"
     ];
-
     function assignColor() {
       return COLORS[Math.floor(Math.random() * COLORS.length)];
     }
@@ -172,6 +175,7 @@
       sendBtn.disabled = msgInput.value.trim() === "" || !username;
     }
 
+    // 🟣 WebSocket
     const socket = new WebSocket(WS_URL);
     socket.onmessage = (e) => {
       const data = JSON.parse(e.data);
@@ -216,7 +220,7 @@
       chat.scrollTop = chat.scrollHeight;
     }
 
-    // Load history
+    // 🟣 Load chat history
     fetch(`${API_URL}/api/messages`)
       .then(res => res.json())
       .then(data => data.forEach(msg => addMessage(msg.user, msg.text, msg.color)));
