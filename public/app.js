@@ -5,7 +5,7 @@ let currentRoom = "global";
 let conversations = JSON.parse(localStorage.getItem("conversations") || "{}");
 let avatar = localStorage.getItem("avatar") || null;
 
-// Helper for safe DOM selection
+// Helper
 function $(id) {
   return document.getElementById(id);
 }
@@ -37,21 +37,24 @@ const pfpUpload = $("pfpUpload"); // optional
 window.onload = () => {
   if (createAccountBtn) createAccountBtn.onclick = createAccount;
   if (sendBtn) sendBtn.onclick = sendMessage;
+
+  // Enter to send, Shift+Enter for newline
   if (messageInput) {
     messageInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) { // Enter without Shift
-        e.preventDefault(); // stop new line
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
         sendMessage();
       }
     });
   }
+
   if (newChatBtn) newChatBtn.onclick = () => modal?.classList.remove("hidden");
   if (closeModalBtn) closeModalBtn.onclick = () => modal?.classList.add("hidden");
   if (startChatBtn) startChatBtn.onclick = startChat;
   if (closeErrorBtn) closeErrorBtn.onclick = () => errorPopup?.classList.add("hidden");
   if (signOutBtn) signOutBtn.onclick = signOut;
 
-  // Restore session
+  // Restore session UI
   if (username) {
     welcomeScreen?.classList.add("hidden");
     chatLayout?.classList.remove("hidden");
@@ -82,26 +85,13 @@ window.onload = () => {
     });
   }
 
-  loadConversations();
+  loadConversations();      // builds the sidebar (only here)
+  loadMessages();           // show current room messages
 
-  const global = document.createElement("div");
-  global.className = "conversation global";
-  global.innerHTML = `
-    <div class="pfp">🌍</div>
-    <div>
-      <b class="title">Global Chat</b>
-      <div class="preview">${conversations["global"]?.preview || ""}</div>
-    </div>
-    <span class="badge"></span>
-  `;
-  global.onclick = () => switchRoom("global");
-  conversationsList.appendChild(global);
-
-  // --- Online users ---
-  updateOnlineCount();       // initial fetch
-  setInterval(updateOnlineCount, 10000); // auto-refresh every 10s
-
-  loadMessages();
+  // Presence (only if logged in)
+  if (username) {
+    startPresence();
+  }
 };
 
 // -------- ACCOUNT --------
@@ -111,11 +101,18 @@ function createAccount() {
   if (!input) return;
   username = input;
   localStorage.setItem("username", username);
-  // force refresh to apply state
   location.reload();
 }
 
 function signOut() {
+  if (username) {
+    try {
+      // best-effort leave
+      const data = new Blob([JSON.stringify({ user: username })], { type: "application/json" });
+      navigator.sendBeacon?.(`${API_URL}/api/online/leave`, data);
+    } catch {}
+  }
+
   localStorage.clear();
   username = null;
   conversations = {};
@@ -246,12 +243,17 @@ function loadConversations() {
   if (!conversationsList) return;
   conversationsList.innerHTML = "";
 
-  // Global Chat
+  // Global Chat (single source of truth – no duplicates)
   const global = document.createElement("div");
   global.className = "conversation global";
-  global.innerHTML = `<div class="pfp">🌍</div><div><b class="title">Global Chat</b><div class="preview">${
-    conversations["global"]?.preview || ""
-  }</div></div><span class="badge"></span>`;
+  global.innerHTML = `
+    <div class="pfp">🌍</div>
+    <div>
+      <b class="title">Global Chat</b>
+      <div class="preview">${conversations["global"]?.preview || ""}</div>
+    </div>
+    <span class="badge"></span>
+  `;
   global.onclick = () => switchRoom("global");
   conversationsList.appendChild(global);
 
@@ -261,10 +263,20 @@ function loadConversations() {
     const conv = conversations[room];
     const div = document.createElement("div");
     div.className = "conversation";
-    div.innerHTML = `<div class="pfp">${conv.name[0].toUpperCase()}</div><div><b>${conv.name}</b><div class="preview">${conv.preview || ""}</div></div><span class="badge"></span>`;
+    div.innerHTML = `
+      <div class="pfp">${conv.name[0].toUpperCase()}</div>
+      <div>
+        <b>${conv.name}</b>
+        <div class="preview">${conv.preview || ""}</div>
+      </div>
+      <span class="badge"></span>
+    `;
     div.onclick = () => switchRoom(room);
     conversationsList.appendChild(div);
   });
+
+  // After building the list, update the online count label
+  updateOnlineCount();
 }
 
 function switchRoom(room) {
@@ -275,6 +287,9 @@ function switchRoom(room) {
       room === "global" ? "Global Chat" : `Chat with ${conversations[room].name}`;
   }
   loadMessages();
+
+  // optionally refresh presence ping right away
+  if (room === "global") updateOnlineCount();
 }
 
 function updateConversationPreview(room, text) {
@@ -298,7 +313,7 @@ function showError(msg) {
   errorPopup.classList.remove("hidden");
 }
 
-// -------- ONLINE USERS --------
+// -------- ONLINE USERS / PRESENCE --------
 async function updateOnlineCount() {
   try {
     const res = await fetch(`${API_URL}/api/online`);
@@ -307,9 +322,47 @@ async function updateOnlineCount() {
 
     const globalTab = document.querySelector("#conversations .conversation.global");
     if (globalTab) {
-      globalTab.querySelector(".title").innerText = `Global Chat - ${count} Online`;
+      const titleEl = globalTab.querySelector(".title");
+      if (titleEl) titleEl.innerText = `Global Chat - ${count} Online`;
     }
   } catch (e) {
     console.error("Error updating online count", e);
+  }
+}
+
+function startPresence() {
+  // initial ping
+  pingOnline();
+
+  // heartbeat every 15s
+  setInterval(pingOnline, 15000);
+
+  // ping when tab becomes active again
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") pingOnline();
+  });
+
+  // best-effort leave on close/refresh
+  window.addEventListener("beforeunload", () => {
+    try {
+      const data = new Blob([JSON.stringify({ user: username })], { type: "application/json" });
+      navigator.sendBeacon?.(`${API_URL}/api/online/leave`, data);
+    } catch {}
+  });
+}
+
+async function pingOnline() {
+  if (!username) return;
+  try {
+    await fetch(`${API_URL}/api/online/ping`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user: username }),
+      keepalive: true,
+    });
+    // also keep the count fresh
+    updateOnlineCount();
+  } catch (e) {
+    console.error("Presence ping failed", e);
   }
 }
