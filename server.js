@@ -1,6 +1,10 @@
-const express = require("express");
-const path = require("path");
-const cors = require("cors");
+import express from "express";
+import path from "path";
+import cors from "cors";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,13 +57,10 @@ app.post("/api/messages/:room", (req, res) => {
   res.json({ ok: true });
 });
 
-// --- Check user (very permissive for now) ---
+// --- Check user (simple for now) ---
 app.get("/api/checkUser/:user", (req, res) => {
   const { user } = req.params;
   if (!user || !user.trim()) return res.status(400).json({ exists: false });
-  // If you'd rather require "online", uncomment below:
-  // pruneOldOnline();
-  // return onlineUsers.has(user) ? res.json({ exists: true }) : res.status(404).json({ exists: false });
   return res.json({ exists: true });
 });
 
@@ -87,5 +88,5 @@ app.get("*", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  console.log(`✅ Server listening on port ${PORT}`);
 });
