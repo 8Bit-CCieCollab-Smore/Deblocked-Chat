@@ -1,4 +1,5 @@
-const API_URL = "https://YOUR-KOYEB-APP-NAME.koyeb.app"; // <-- change this
+// 🔥 IMPORTANT: replace with your actual backend URL (Koyeb, Render, etc.)
+const API_URL = "https://voluminous-nicolina-deblocked-a71dba13.koyeb.app";
 
 let username = null;
 let currentRoom = "global";
@@ -36,6 +37,7 @@ function createAccount() {
 async function loadMessages() {
   try {
     const res = await fetch(`${API_URL}/api/messages/${currentRoom}`);
+    if (!res.ok) throw new Error("Failed to load messages");
     const data = await res.json();
     renderMessages(data);
   } catch (e) {
@@ -59,16 +61,23 @@ async function sendMessage() {
   const input = document.getElementById("message");
   const text = input.value.trim();
   if (!text) return;
-  const res = await fetch(`${API_URL}/api/messages/${currentRoom}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user: username, text })
-  });
 
-  if (res.ok) {
-    input.value = "";
-    loadMessages();
-    updateConversationPreview(currentRoom, text);
+  try {
+    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user: username, text })
+    });
+
+    if (res.ok) {
+      input.value = "";
+      loadMessages();
+      updateConversationPreview(currentRoom, text);
+    } else {
+      console.error("Failed to send message", res.status);
+    }
+  } catch (e) {
+    console.error("Error sending message", e);
   }
 }
 
@@ -99,6 +108,7 @@ async function startChat() {
 function loadConversations() {
   const list = document.getElementById("conversations");
   list.innerHTML = "";
+
   // Global Chat
   const global = document.createElement("div");
   global.className = "conversation";
