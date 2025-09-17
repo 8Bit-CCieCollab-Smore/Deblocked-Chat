@@ -46,6 +46,34 @@ const profileMsgInput = $("profileMsgInput");
 
 let viewedUser = null;
 
+// -------- ONLINE STATUS HELPERS --------
+function markOnline(user) {
+  onlineUsers[user] = Date.now();
+  localStorage.setItem("onlineUsers", JSON.stringify(onlineUsers));
+}
+
+function isUserOnline(user) {
+  const lastSeen = onlineUsers[user];
+  if (!lastSeen) return false;
+  return Date.now() - lastSeen < 120000; // 2 min threshold
+}
+
+// Heartbeat every 20s
+setInterval(() => {
+  if (username) {
+    markOnline(username);
+  }
+  // prune old users after 5 min
+  Object.keys(onlineUsers).forEach((u) => {
+    if (Date.now() - onlineUsers[u] > 300000) {
+      delete onlineUsers[u];
+    }
+  });
+  localStorage.setItem("onlineUsers", JSON.stringify(onlineUsers));
+  loadMessages();
+  loadConversations();
+}, 20000);
+
 // -------- INIT --------
 window.onload = () => {
   if (createAccountBtn) createAccountBtn.onclick = createAccount;
@@ -54,7 +82,6 @@ window.onload = () => {
   if (closeModalBtn) closeModalBtn.onclick = () => modal?.classList.add("hidden");
   if (startChatBtn) startChatBtn.onclick = startChat;
   if (closeErrorBtn) closeErrorBtn.onclick = () => errorPopup?.classList.add("hidden");
-
   if (logoutBtn) logoutBtn.onclick = signOut;
 
   // Enter to send
@@ -79,6 +106,7 @@ window.onload = () => {
         currentUserPfp.innerText = username[0].toUpperCase();
       }
     }
+    markOnline(username);
   }
 
   // PFP upload
@@ -160,8 +188,7 @@ function renderMessages(msgs) {
       pfp.innerText = m.user[0].toUpperCase();
     }
     pfp.onclick = () => {
-      const isOnline = onlineUsers[m.user] || false;
-      openProfile(m.user, m.avatar, m.banner, isOnline);
+      openProfile(m.user, m.avatar, m.banner);
     };
 
     const bubble = document.createElement("div");
@@ -169,7 +196,7 @@ function renderMessages(msgs) {
 
     const meta = document.createElement("div");
     meta.className = "meta" + (m.user === username ? " self-user" : "");
-    const isOnline = onlineUsers[m.user] || false;
+    const isOnline = isUserOnline(m.user);
     meta.innerHTML = `<span><b>${m.user}</b></span><span class="${
       isOnline ? "online" : "offline"
     }">${isOnline ? "Online" : "Offline"}</span>`;
@@ -215,8 +242,7 @@ async function sendMessage() {
 
     if (res.ok) {
       messageInput.value = "";
-      onlineUsers[username] = true;
-      localStorage.setItem("onlineUsers", JSON.stringify(onlineUsers));
+      markOnline(username);
       loadMessages();
       updateConversationPreview(currentRoom, text);
     } else {
@@ -264,6 +290,7 @@ function loadConversations() {
   const global = document.createElement("div");
   global.className = "conversation";
   global.dataset.room = "global";
+  const globalOnline = isUserOnline("global");
   global.innerHTML = `<div class="pfp">🌍</div><div><b>Global Chat</b><div class="preview">${
     conversations["global"]?.preview || ""
   }</div></div><span class="badge"></span>`;
@@ -280,9 +307,11 @@ function loadConversations() {
     const div = document.createElement("div");
     div.className = "conversation";
     div.dataset.room = room;
-    div.innerHTML = `<div class="pfp">${conv.name[0].toUpperCase()}</div><div><b>${
-      conv.name
-    }</b><div class="preview">${conv.preview || ""}</div></div><span class="badge"></span>`;
+    const isOnline = isUserOnline(conv.name);
+    div.innerHTML = `<div class="pfp">${conv.name[0].toUpperCase()}</div>
+      <div><b>${conv.name}</b>
+      <div class="preview">${conv.preview || ""}</div></div>
+      <span class="badge"></span>`;
     div.onclick = () => {
       switchRoom(room);
       setUnread(room, false);
@@ -331,7 +360,7 @@ function showError(msg) {
 }
 
 // -------- PROFILE --------
-function openProfile(user, avatarUrl, bannerUrl, isOnline) {
+function openProfile(user, avatarUrl, bannerUrl) {
   viewedUser = user;
   profileOverlay.classList.add("show");
 
@@ -345,6 +374,7 @@ function openProfile(user, avatarUrl, bannerUrl, isOnline) {
     profilePfp.innerText = user[0].toUpperCase();
   }
 
+  const isOnline = isUserOnline(user);
   profileUsername.innerText = user;
   profileStatus.innerText = isOnline ? "Online" : "Offline";
   profileStatus.className = "profile-status " + (isOnline ? "online" : "offline");
