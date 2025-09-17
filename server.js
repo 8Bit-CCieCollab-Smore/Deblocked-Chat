@@ -5,29 +5,46 @@ import { WebSocketServer } from "ws";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// ✅ Allowed frontend origins
+const allowedOrigins = [
+  "https://deblocked-chat.netlify.app", // your Netlify site
+  "http://localhost:3000"               // optional for local dev
+];
+
+// ✅ Explicit CORS setup
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS: " + origin));
+    }
+  }
+}));
+
 app.use(express.json());
 
+// 🔒 Chat config
 const MAX_MESSAGES = 10000;
 const MAX_LENGTH = 350;
 let messages = [];
 
-// API: Get messages
+// 📥 Get chat history
 app.get("/api/messages", (req, res) => {
   res.json(messages);
 });
 
-// API: Post a new message
+// 📤 Post new message
 app.post("/api/messages", (req, res) => {
   let { user, text, color } = req.body;
 
+  // Validation
   if (!text || text.trim() === "") {
     return res.status(400).json({ error: "Message cannot be empty" });
   }
   if (text.length > MAX_LENGTH) {
-    return res.status(400).json({ error: `Message too long (max ${MAX_LENGTH} characters)` });
+    return res.status(400).json({ error: `Message too long (max ${MAX_LENGTH} chars)` });
   }
-
   if (!user || user.trim() === "") user = "anon";
   if (!color) color = "#000";
 
@@ -44,7 +61,7 @@ app.post("/api/messages", (req, res) => {
     messages.shift();
   }
 
-  // Broadcast to all clients
+  // Broadcast to all WebSocket clients
   wss.clients.forEach((client) => {
     if (client.readyState === 1) {
       client.send(JSON.stringify(newMessage));
@@ -54,16 +71,17 @@ app.post("/api/messages", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Ping endpoint
+// 🔄 Ping (for uptime bots)
 app.get("/ping", (req, res) => res.send("pong"));
 
 const server = app.listen(PORT, () =>
   console.log(`✅ Server running on port ${PORT}`)
 );
 
+// 🟣 WebSocket setup
 const wss = new WebSocketServer({ server });
 
-// Broadcast online count
+// Broadcast user count
 function broadcastUserCount() {
   const count = [...wss.clients].filter(c => c.readyState === 1).length;
   const data = JSON.stringify({ type: "userCount", count });
