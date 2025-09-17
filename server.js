@@ -9,15 +9,16 @@ const PORT = process.env.PORT || 3000;
 
 // === CORS allowed origins ===
 const allowedOrigins = [
-  "https://codepen.io",
-  "https://cdpn.io",
-  "http://localhost:3000"
+  "https://deblocked-chat.onrender.com", // Render frontend
+  "https://codepen.io",                  // CodePen editor
+  "https://cdpn.io",                     // CodePen fullpage + debug
+  "http://localhost:3000"                // Local dev
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.some(o => origin.startsWith(o))) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS: " + origin));
@@ -51,7 +52,7 @@ app.post("/api/messages", (req, res) => {
       messages.shift();
     }
 
-    // Broadcast
+    // Broadcast new message
     wss.clients.forEach((client) => {
       if (client.readyState === 1) {
         client.send(JSON.stringify(newMessage));
