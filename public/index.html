@@ -3,79 +3,101 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Deblocked Chat</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Smoreh Chat</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Welcome screen -->
-  <div id="welcome-screen" class="center-screen">
+  <!-- Welcome Screen -->
+  <div id="welcome-screen" class="screen">
     <div class="card">
-      <h2>👤 Welcome!</h2>
-      <p>Create your account to start chatting</p>
-      <input type="text" id="usernameInput" placeholder="Enter your username" />
-      <button id="createAccountBtn" class="rainbow-btn">
-        <span>Create</span>
-      </button>
+      <h1>Welcome</h1>
+      <input id="usernameInput" placeholder="Enter a username..." />
+      <button id="createAccountBtn">Create Account</button>
     </div>
   </div>
 
-  <!-- Chat layout -->
+  <!-- Chat Layout -->
   <div id="chat-layout" class="hidden">
     <!-- Sidebar -->
-    <aside id="sidebar">
-      <header>
-        <h3>Messages</h3>
-        <button id="newChatBtn" class="icon-btn">
-          <img src="https://cdn-icons-png.flaticon.com/128/880/880594.png" alt="add" class="icon-btn"/>
-        </button>
-      </header>
+    <div id="sidebar">
+      <div id="currentUserPfp" class="pfp"></div>
+      <div id="currentUser"></div>
       <div id="conversations"></div>
+    </div>
 
-      <div id="userFooter">
-        <div id="currentUserPfp">?</div>
-        <div>
-          <b id="currentUser">User</b>
-          <div class="status">Online</div>
-        </div>
-        <label for="pfpUpload" style="cursor:pointer;">📷</label>
-        <input type="file" id="pfpUpload" accept="image/*" style="display:none;">
-        <button id="signOutBtn" class="signout-btn">❌</button>
+    <!-- Main Chat Area -->
+    <div id="main">
+      <div id="chatHeader">
+        Global Chat
+        <img src="https://cdn-icons-png.flaticon.com/128/4175/4175032.png"
+             id="newChatBtn"
+             class="icon"
+             title="New Chat" />
+        <img src="https://cdn-icons-png.flaticon.com/128/3524/3524636.png"
+             class="icon"
+             title="Settings"
+             onclick="settingsOverlay.classList.add('show')" />
       </div>
-    </aside>
 
-    <!-- Chat area -->
-    <main id="chat-area">
-      <div id="chatHeader">Global Chat</div>
       <div id="chat"></div>
+
       <div id="inputBar">
-        <input type="text" id="message" placeholder="Type a message..." />
-        <button id="sendBtn">
-          <img src="https://cdn-icons-png.flaticon.com/128/1933/1933005.png" alt="send" class="send-icon"/>
-        </button>
+        <textarea id="message" placeholder="Type your message..."></textarea>
+        <button id="sendBtn">Send</button>
       </div>
-    </main>
+    </div>
   </div>
 
-  <!-- New Chat Modal -->
+  <!-- Modal: Start New Chat -->
   <div id="modal" class="hidden">
     <div class="modal-content">
-      <h3>Start New Chat</h3>
-      <input type="text" id="newChatUser" placeholder="Enter username..." />
-      <div>
-        <button id="startChatBtn">Start Chat</button>
-        <button id="closeModalBtn">Cancel</button>
-      </div>
+      <h3>Start a new chat</h3>
+      <input id="newChatUser" placeholder="Enter username..." />
+      <button id="startChatBtn">Start Chat</button>
+      <button id="closeModalBtn">Cancel</button>
     </div>
   </div>
 
   <!-- Error Popup -->
   <div id="errorPopup" class="hidden">
-    <div class="error-card">
-      <p id="errorMsg">Error</p>
-      <button id="closeErrorBtn">OK</button>
+    <div class="popup">
+      <p id="errorMsg"></p>
+      <button id="closeErrorBtn">Close</button>
     </div>
   </div>
 
+  <!-- Profile Overlay -->
+  <div id="profileOverlay">
+    <div class="profile-card">
+      <div id="profileBanner" class="profile-banner"></div>
+      <div id="profilePfp" class="profile-pfp"></div>
+      <div class="profile-body">
+        <div id="profileUsername" class="profile-username">Username</div>
+        <div id="profileStatus" class="profile-status offline">Offline</div>
+        <div class="profile-actions">
+          <button id="addFriendBtn" class="add-friend">➕ Add Friend</button>
+          <button id="dmUserBtn" class="dm-user">💬 Message</button>
+        </div>
+        <input id="profileMsgInput" class="profile-input" placeholder="Type a message...">
+        <button onclick="closeProfile()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Overlay -->
+  <div id="settingsOverlay">
+    <div class="settings-card">
+      <h3>⚙️ Settings</h3>
+      <label>Profile Picture:</label>
+      <input type="file" id="choosePfpBtn" accept="image/*">
+      <label>Banner:</label>
+      <input type="file" id="chooseBannerBtn" accept="image/*">
+      <button class="logout" id="logoutBtn">Log Out</button>
+      <button onclick="settingsOverlay.classList.remove('show')">Close</button>
+    </div>
+  </div>
+
+  <!-- Script -->
   <script src="app.js"></script>
 </body>
 </html>
