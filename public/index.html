@@ -76,13 +76,14 @@
     </div>
   </div>
 
+  <!-- Scripts -->
   <script src="app.js"></script>
   <script>
-    // Reuse fileInput from app.js (do not redeclare it here)
+    // Attach file input handler (use the one from app.js)
     const attachBtn = document.getElementById("attachBtn");
     attachBtn.addEventListener("click", () => fileInput.click());
 
-    // Modify sendMessage to include file
+    // Override sendMessage to support file sending
     const originalSend = sendMessage;
     sendMessage = async () => {
       const file = fileInput.files[0];
@@ -127,7 +128,7 @@
       }
     };
 
-    // Modify renderMessages to handle images/files
+    // Override renderMessages to display files/images
     const originalRender = renderMessages;
     renderMessages = (msgs) => {
       if (!chat) return;
