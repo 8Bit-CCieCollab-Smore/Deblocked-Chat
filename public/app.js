@@ -1,4 +1,4 @@
-// 🔥 IMPORTANT: replace with your actual backend URL (Koyeb, Render, etc.)
+// 🔥 Replace with your actual backend URL
 const API_URL = "https://voluminous-nicolina-deblocked-a71dba13.koyeb.app";
 
 let username = null;
@@ -17,6 +17,20 @@ window.onload = () => {
   document.getElementById("startChatBtn").onclick = startChat;
   document.getElementById("closeErrorBtn").onclick = () =>
     document.getElementById("errorPopup").classList.add("hidden");
+
+  // Profile upload
+  document.getElementById("pfpUpload").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const pfp = document.getElementById("currentUserPfp");
+      pfp.style.background = `url(${ev.target.result}) center/cover no-repeat`;
+      pfp.innerText = "";
+    };
+    reader.readAsDataURL(file);
+  });
 
   loadConversations();
   loadMessages();
@@ -54,6 +68,7 @@ function renderMessages(msgs) {
     div.innerHTML = `<span>${m.user}:</span> ${m.text}`;
     chat.appendChild(div);
   });
+  chat.scrollTop = chat.scrollHeight;
 }
 
 // Send message
@@ -130,8 +145,16 @@ function loadConversations() {
 
 function switchRoom(room) {
   currentRoom = room;
-  document.getElementById("chatHeader").innerText =
-    room === "global" ? "Global Chat" : `Chat with ${conversations[room].name}`;
+  const chatArea = document.getElementById("chat");
+
+  if (room === "global") {
+    document.getElementById("chatHeader").innerText = "Global Chat";
+    chatArea.className = "";
+  } else {
+    document.getElementById("chatHeader").innerText = `Chat with ${conversations[room].name}`;
+    chatArea.className = "dm-chat";
+  }
+
   loadMessages();
 }
 
@@ -152,4 +175,5 @@ function saveConversations() {
 function showError(msg) {
   document.getElementById("errorMsg").innerText = msg;
   document.getElementById("errorPopup").classList.remove("hidden");
+
 }
