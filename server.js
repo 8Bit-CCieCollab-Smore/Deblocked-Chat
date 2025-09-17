@@ -56,3 +56,15 @@ app.get("/api/checkUser/:name", (req, res) => {
 });
 
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+
+let onlineUsers = new Set();
+
+app.post("/api/online", (req, res) => {
+  const { user } = req.body;
+  if (user) onlineUsers.add(user);
+  res.json({ count: onlineUsers.size });
+});
+
+app.get("/api/online", (req, res) => {
+  res.json({ count: onlineUsers.size });
+});
