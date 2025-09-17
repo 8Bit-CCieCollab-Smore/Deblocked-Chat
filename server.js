@@ -3,23 +3,30 @@ import cors from "cors";
 import { WebSocketServer } from "ws";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// === Allowed CORS origins ===
+// === Resolve paths ===
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const messagesFile = path.join(__dirname, "messages.json");
+
+// === CORS allowed origins ===
 const allowedOrigins = [
   "https://deblocked-chat.onrender.com",
   "https://deblocked-chat.netlify.app",
   "https://codepen.io",
   "https://cdpn.io",
-  "http://localhost:3000"
+  "http://localhost:3000",
+  "https://YOUR-REPL-URL.repl.co"
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow server-to-server calls
+      if (!origin) return callback(null, true);
       if (allowedOrigins.some((o) => origin.startsWith(o))) {
         callback(null, true);
       } else {
@@ -32,9 +39,20 @@ app.use(
 
 app.use(express.json());
 
-// === Messages in memory ===
-const MAX_MESSAGES = 1000;
+// === Load messages from file ===
 let messages = [];
+try {
+  if (fs.existsSync(messagesFile)) {
+    messages = JSON.parse(fs.readFileSync(messagesFile, "utf-8"));
+  }
+} catch (err) {
+  console.error("Error reading messages.json:", err);
+}
+
+// === Save messages helper ===
+function saveMessages() {
+  fs.writeFileSync(messagesFile, JSON.stringify(messages, null, 2));
+}
 
 // === API Routes ===
 app.get("/api/messages", (req, res) => {
@@ -44,18 +62,22 @@ app.get("/api/messages", (req, res) => {
 app.post("/api/messages", (req, res) => {
   const newMessage = {
     user: req.body.user || "anon",
-    text: req.body.text?.slice(0, 350) || "", // enforce 350-char cap
+    text: req.body.text?.slice(0, 350) || "",
     color: req.body.color || "#fff",
     timestamp: Date.now(),
   };
 
   if (newMessage.text.trim()) {
     messages.push(newMessage);
-    if (messages.length > MAX_MESSAGES) {
-      messages.shift();
+
+    // Keep only last 150 messages
+    if (messages.length > 150) {
+      messages = messages.slice(-150);
     }
 
-    // Broadcast new message to all WS clients
+    saveMessages();
+
+    // Broadcast to WebSocket clients
     broadcast({ type: "message", payload: newMessage });
   }
 
@@ -63,8 +85,6 @@ app.post("/api/messages", (req, res) => {
 });
 
 // === Serve frontend (index.html in /public) ===
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, "public")));
 
 // === Start server ===
@@ -91,7 +111,6 @@ function broadcastOnlineCount() {
 
 wss.on("connection", (ws) => {
   broadcastOnlineCount();
-
   ws.on("close", () => {
     broadcastOnlineCount();
   });
