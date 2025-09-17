@@ -37,6 +37,14 @@ const pfpUpload = $("pfpUpload"); // optional
 window.onload = () => {
   if (createAccountBtn) createAccountBtn.onclick = createAccount;
   if (sendBtn) sendBtn.onclick = sendMessage;
+  if (messageInput) {
+  messageInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { // Enter without Shift
+      e.preventDefault(); // stop new line
+      sendMessage();
+    }
+  });
+}
   if (newChatBtn) newChatBtn.onclick = () => modal?.classList.remove("hidden");
   if (closeModalBtn) closeModalBtn.onclick = () => modal?.classList.add("hidden");
   if (startChatBtn) startChatBtn.onclick = startChat;
