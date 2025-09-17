@@ -103,10 +103,13 @@ aside header {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
   cursor: pointer;
+  position: relative;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .conversation:hover {
   background: rgba(255, 255, 255, 0.12);
+  transform: translateX(2px);
 }
 
 .conversation .pfp {
@@ -125,6 +128,22 @@ aside header {
 .conversation .preview {
   font-size: 12px;
   color: #bbb;
+}
+
+/* 🔴 Unread badge */
+.conversation .badge {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff4d4d;
+  display: none;
+}
+
+.conversation.unread .badge {
+  display: block;
 }
 
 /* Footer with raised user info */
@@ -151,6 +170,14 @@ aside header {
   font-weight: bold;
   font-size: 16px;
   border: 2px solid rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+}
+
+#currentUserPfp img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .status {
@@ -179,18 +206,21 @@ main#chat-area {
   background: transparent;
 }
 
-/* Header smaller like footer */
+/* Header smaller + fixed */
 #chatHeader {
-  padding: 10px;
-  font-size: 14px;
+  position: sticky;
+  top: 0;
+  padding: 8px 12px;
+  font-size: 13px;
   background: rgba(36, 51, 64, 0.85);
   backdrop-filter: blur(8px);
-  border-radius: 12px;
-  margin: 12px;
+  border-radius: 8px;
+  margin: 8px 12px;
   font-weight: bold;
   display: flex;
   align-items: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  z-index: 10;
 }
 
 /* Chat pane */
@@ -209,8 +239,9 @@ main#chat-area {
 .msg {
   display: flex;
   align-items: flex-start;
-  margin: 10px 0;
+  margin: 12px 0;
   max-width: 75%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .msg.other {
@@ -234,6 +265,14 @@ main#chat-area {
   font-weight: bold;
   font-size: 13px;
   margin-right: 8px;
+  overflow: hidden;
+}
+
+.msg .pfp img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .msg.self .pfp {
@@ -244,8 +283,8 @@ main#chat-area {
 .bubble {
   background: rgba(255, 255, 255, 0.15);
   color: #fff;
-  padding: 8px 12px;
-  border-radius: 12px;
+  padding: 12px 16px; /* x1.5 bigger */
+  border-radius: 14px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.25);
 }
 
@@ -254,10 +293,15 @@ main#chat-area {
   color: #fff;
 }
 
+.msg:hover .bubble {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.35);
+}
+
 .meta {
   font-size: 11px;
   color: #bbb;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .meta.self-user {
