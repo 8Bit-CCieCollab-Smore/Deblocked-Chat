@@ -4,10 +4,11 @@ let username = localStorage.getItem("username") || null;
 let currentRoom = "global";
 let conversations = JSON.parse(localStorage.getItem("conversations") || "{}");
 let avatar = localStorage.getItem("avatar") || null;
-let banner = localStorage.getItem("banner") || null;
-let onlineUsers = JSON.parse(localStorage.getItem("onlineUsers") || "{}");
 
-const $ = (id) => document.getElementById(id);
+// Helper for safe DOM selection
+function $(id) {
+  return document.getElementById(id);
+}
 
 // Elements
 const welcomeScreen = $("welcome-screen");
@@ -29,50 +30,8 @@ const errorMsg = $("errorMsg");
 const closeErrorBtn = $("closeErrorBtn");
 const conversationsList = $("conversations");
 const chatHeader = $("chatHeader");
-const settingsOverlay = $("settingsOverlay");
-const choosePfpBtn = $("choosePfpBtn");
-const chooseBannerBtn = $("chooseBannerBtn");
-const logoutBtn = $("logoutBtn");
-
-// Profile overlay
-const profileOverlay = $("profileOverlay");
-const profileBanner = $("profileBanner");
-const profilePfp = $("profilePfp");
-const profileUsername = $("profileUsername");
-const profileStatus = $("profileStatus");
-const addFriendBtn = $("addFriendBtn");
-const dmUserBtn = $("dmUserBtn");
-const profileMsgInput = $("profileMsgInput");
-
-let viewedUser = null;
-
-// -------- ONLINE STATUS HELPERS --------
-function markOnline(user) {
-  onlineUsers[user] = Date.now();
-  localStorage.setItem("onlineUsers", JSON.stringify(onlineUsers));
-}
-
-function isUserOnline(user) {
-  const lastSeen = onlineUsers[user];
-  if (!lastSeen) return false;
-  return Date.now() - lastSeen < 120000; // 2 min threshold
-}
-
-// Heartbeat every 20s
-setInterval(() => {
-  if (username) {
-    markOnline(username);
-  }
-  // prune old users after 5 min
-  Object.keys(onlineUsers).forEach((u) => {
-    if (Date.now() - onlineUsers[u] > 300000) {
-      delete onlineUsers[u];
-    }
-  });
-  localStorage.setItem("onlineUsers", JSON.stringify(onlineUsers));
-  loadMessages();
-  loadConversations();
-}, 20000);
+const signOutBtn = $("signOutBtn");
+const pfpUpload = $("pfpUpload"); // optional
 
 // -------- INIT --------
 window.onload = () => {
@@ -82,17 +41,7 @@ window.onload = () => {
   if (closeModalBtn) closeModalBtn.onclick = () => modal?.classList.add("hidden");
   if (startChatBtn) startChatBtn.onclick = startChat;
   if (closeErrorBtn) closeErrorBtn.onclick = () => errorPopup?.classList.add("hidden");
-  if (logoutBtn) logoutBtn.onclick = signOut;
-
-  // Enter to send
-  if (messageInput) {
-    messageInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-  }
+  if (signOutBtn) signOutBtn.onclick = signOut;
 
   // Restore session
   if (username) {
@@ -106,32 +55,20 @@ window.onload = () => {
         currentUserPfp.innerText = username[0].toUpperCase();
       }
     }
-    markOnline(username);
   }
 
-  // PFP upload
-  if (choosePfpBtn) {
-    choosePfpBtn.addEventListener("change", (e) => {
+  // Profile upload
+  if (pfpUpload) {
+    pfpUpload.addEventListener("change", function (e) {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = function (ev) {
         avatar = ev.target.result;
         localStorage.setItem("avatar", avatar);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  // Banner upload
-  if (chooseBannerBtn) {
-    chooseBannerBtn.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        banner = ev.target.result;
-        localStorage.setItem("banner", banner);
+        if (currentUserPfp) {
+          currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -148,6 +85,7 @@ function createAccount() {
   if (!input) return;
   username = input;
   localStorage.setItem("username", username);
+  // force refresh to apply state
   location.reload();
 }
 
@@ -187,19 +125,17 @@ function renderMessages(msgs) {
     } else {
       pfp.innerText = m.user[0].toUpperCase();
     }
-    pfp.onclick = () => {
-      openProfile(m.user, m.avatar, m.banner);
-    };
 
     const bubble = document.createElement("div");
     bubble.className = "bubble";
 
     const meta = document.createElement("div");
     meta.className = "meta" + (m.user === username ? " self-user" : "");
-    const isOnline = isUserOnline(m.user);
-    meta.innerHTML = `<span><b>${m.user}</b></span><span class="${
-      isOnline ? "online" : "offline"
-    }">${isOnline ? "Online" : "Offline"}</span>`;
+    const time = new Date(m.timestamp || Date.now()).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    meta.innerHTML = `<span><b>${m.user}</b></span><span>${time}</span>`;
 
     const text = document.createElement("div");
     text.innerText = m.text;
@@ -229,7 +165,6 @@ async function sendMessage() {
     user: username,
     text,
     avatar,
-    banner,
     timestamp: Date.now(),
   };
 
@@ -242,7 +177,6 @@ async function sendMessage() {
 
     if (res.ok) {
       messageInput.value = "";
-      markOnline(username);
       loadMessages();
       updateConversationPreview(currentRoom, text);
     } else {
@@ -289,15 +223,10 @@ function loadConversations() {
   // Global Chat
   const global = document.createElement("div");
   global.className = "conversation";
-  global.dataset.room = "global";
-  const globalOnline = isUserOnline("global");
   global.innerHTML = `<div class="pfp">🌍</div><div><b>Global Chat</b><div class="preview">${
     conversations["global"]?.preview || ""
   }</div></div><span class="badge"></span>`;
-  global.onclick = () => {
-    switchRoom("global");
-    setUnread("global", false);
-  };
+  global.onclick = () => switchRoom("global");
   conversationsList.appendChild(global);
 
   // DMs
@@ -306,16 +235,8 @@ function loadConversations() {
     const conv = conversations[room];
     const div = document.createElement("div");
     div.className = "conversation";
-    div.dataset.room = room;
-    const isOnline = isUserOnline(conv.name);
-    div.innerHTML = `<div class="pfp">${conv.name[0].toUpperCase()}</div>
-      <div><b>${conv.name}</b>
-      <div class="preview">${conv.preview || ""}</div></div>
-      <span class="badge"></span>`;
-    div.onclick = () => {
-      switchRoom(room);
-      setUnread(room, false);
-    };
+    div.innerHTML = `<div class="pfp">${conv.name[0].toUpperCase()}</div><div><b>${conv.name}</b><div class="preview">${conv.preview || ""}</div></div><span class="badge"></span>`;
+    div.onclick = () => switchRoom(room);
     conversationsList.appendChild(div);
   });
 }
@@ -338,18 +259,10 @@ function updateConversationPreview(room, text) {
   }
   saveConversations();
   loadConversations();
-  if (room !== currentRoom) setUnread(room, true);
 }
 
 function saveConversations() {
   localStorage.setItem("conversations", JSON.stringify(conversations));
-}
-
-function setUnread(room, on) {
-  const conv = document.querySelector(`.conversation[data-room="${room}"]`);
-  if (!conv) return;
-  if (on) conv.classList.add("unread");
-  else conv.classList.remove("unread");
 }
 
 // -------- ERRORS --------
@@ -357,63 +270,4 @@ function showError(msg) {
   if (!errorPopup || !errorMsg) return;
   errorMsg.innerText = msg;
   errorPopup.classList.remove("hidden");
-}
-
-// -------- PROFILE --------
-function openProfile(user, avatarUrl, bannerUrl) {
-  viewedUser = user;
-  profileOverlay.classList.add("show");
-
-  profileBanner.style.backgroundImage = bannerUrl
-    ? `url(${bannerUrl})`
-    : "linear-gradient(135deg, #6db3f2, #1e69de)";
-
-  if (avatarUrl) {
-    profilePfp.innerHTML = `<img src="${avatarUrl}" alt="pfp">`;
-  } else {
-    profilePfp.innerText = user[0].toUpperCase();
-  }
-
-  const isOnline = isUserOnline(user);
-  profileUsername.innerText = user;
-  profileStatus.innerText = isOnline ? "Online" : "Offline";
-  profileStatus.className = "profile-status " + (isOnline ? "online" : "offline");
-}
-
-function closeProfile() {
-  profileOverlay.classList.remove("show");
-  viewedUser = null;
-}
-
-if (dmUserBtn) {
-  dmUserBtn.addEventListener("click", () => {
-    if (!viewedUser) return;
-    startChatWith(viewedUser);
-    closeProfile();
-  });
-}
-
-if (profileMsgInput) {
-  profileMsgInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (!viewedUser) return;
-      startChatWith(viewedUser);
-      closeProfile();
-    }
-  });
-}
-
-if (addFriendBtn) {
-  addFriendBtn.addEventListener("click", () => {
-    alert(`Friend request sent to ${viewedUser}`);
-  });
-}
-
-function startChatWith(user) {
-  const room = `dm-${[username, user].sort().join("-")}`;
-  conversations[room] = { name: user, preview: "" };
-  saveConversations();
-  loadConversations();
-  switchRoom(room);
 }
