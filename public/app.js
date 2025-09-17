@@ -38,13 +38,13 @@ window.onload = () => {
   if (createAccountBtn) createAccountBtn.onclick = createAccount;
   if (sendBtn) sendBtn.onclick = sendMessage;
   if (messageInput) {
-  messageInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { // Enter without Shift
-      e.preventDefault(); // stop new line
-      sendMessage();
-    }
-  });
-}
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { // Enter without Shift
+        e.preventDefault(); // stop new line
+        sendMessage();
+      }
+    });
+  }
   if (newChatBtn) newChatBtn.onclick = () => modal?.classList.remove("hidden");
   if (closeModalBtn) closeModalBtn.onclick = () => modal?.classList.add("hidden");
   if (startChatBtn) startChatBtn.onclick = startChat;
@@ -82,39 +82,27 @@ window.onload = () => {
     });
   }
 
-loadConversations();
+  loadConversations();
 
-const global = document.createElement("div");
-global.className = "conversation global";
-global.innerHTML = `
-  <div class="pfp">🌍</div>
-  <div>
-    <b class="title">Global Chat</b>
-    <div class="preview">${conversations["global"]?.preview || ""}</div>
-  </div>
-  <span class="badge"></span>
-`;
-global.onclick = () => switchRoom("global");
-conversationsList.appendChild(global);
+  const global = document.createElement("div");
+  global.className = "conversation global";
+  global.innerHTML = `
+    <div class="pfp">🌍</div>
+    <div>
+      <b class="title">Global Chat</b>
+      <div class="preview">${conversations["global"]?.preview || ""}</div>
+    </div>
+    <span class="badge"></span>
+  `;
+  global.onclick = () => switchRoom("global");
+  conversationsList.appendChild(global);
 
-// --- Online users ---
-async function updateOnlineCount() {
-  try {
-    const res = await fetch(`${API_URL}/api/online`);
-    if (!res.ok) throw new Error("Failed to fetch online count");
-    const { count } = await res.json();
+  // --- Online users ---
+  updateOnlineCount();       // initial fetch
+  setInterval(updateOnlineCount, 10000); // auto-refresh every 10s
 
-    // update sidebar tab
-    const globalTabTitle = document.querySelector(
-      "#conversations .conversation.global .title"
-    );
-    if (globalTabTitle) {
-      globalTabTitle.innerText = `Global Chat - ${count} Online`;
-    }
-  } catch (e) {
-    console.error("Error updating online count", e);
-  }
-}
+  loadMessages();
+};
 
 // -------- ACCOUNT --------
 function createAccount() {
@@ -145,21 +133,6 @@ async function loadMessages() {
     renderMessages(data);
   } catch (e) {
     console.error(e);
-  }
-}
-
-async function updateOnlineCount() {
-  try {
-    const res = await fetch(`${API_URL}/api/online`);
-    if (!res.ok) throw new Error("Failed to fetch online count");
-    const { count } = await res.json();
-
-    const globalTab = document.querySelector("#conversations .conversation.global");
-    if (globalTab) {
-      globalTab.querySelector(".title").innerText = `Global Chat - ${count} Online`;
-    }
-  } catch (e) {
-    console.error("Error updating online count", e);
   }
 }
 
@@ -275,8 +248,8 @@ function loadConversations() {
 
   // Global Chat
   const global = document.createElement("div");
-  global.className = "conversation";
-  global.innerHTML = `<div class="pfp">🌍</div><div><b>Global Chat</b><div class="preview">${
+  global.className = "conversation global";
+  global.innerHTML = `<div class="pfp">🌍</div><div><b class="title">Global Chat</b><div class="preview">${
     conversations["global"]?.preview || ""
   }</div></div><span class="badge"></span>`;
   global.onclick = () => switchRoom("global");
@@ -323,4 +296,20 @@ function showError(msg) {
   if (!errorPopup || !errorMsg) return;
   errorMsg.innerText = msg;
   errorPopup.classList.remove("hidden");
+}
+
+// -------- ONLINE USERS --------
+async function updateOnlineCount() {
+  try {
+    const res = await fetch(`${API_URL}/api/online`);
+    if (!res.ok) throw new Error("Failed to fetch online count");
+    const { count } = await res.json();
+
+    const globalTab = document.querySelector("#conversations .conversation.global");
+    if (globalTab) {
+      globalTab.querySelector(".title").innerText = `Global Chat - ${count} Online`;
+    }
+  } catch (e) {
+    console.error("Error updating online count", e);
+  }
 }
