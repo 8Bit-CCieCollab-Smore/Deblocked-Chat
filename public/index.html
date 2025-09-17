@@ -5,51 +5,119 @@
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     #chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; margin-bottom: 10px; }
-    #msg { width: 80%; }
+    #msg { width: 70%; }
+    #username { width: 200px; margin-bottom: 10px; }
+    .msg-line { margin: 2px 0; }
+    .username { font-weight: bold; }
   </style>
 </head>
 <body>
   <h1>Deblocked Chat</h1>
+
+  <!-- Username setup -->
+  <div id="username-container">
+    <input id="username" placeholder="Enter your username" />
+    <button onclick="setUsername()">Set Username</button>
+  </div>
+
+  <!-- Chat box -->
   <div id="chat"></div>
-  <input id="msg" placeholder="Type a message" />
-  <button onclick="sendMessage()">Send</button>
+
+  <!-- Message input -->
+  <input id="msg" placeholder="Type a message" disabled />
+  <button id="sendBtn" onclick="sendMessage()" disabled>Send</button>
 
   <script>
     const chat = document.getElementById("chat");
+    const msgInput = document.getElementById("msg");
+    const sendBtn = document.getElementById("sendBtn");
+    const usernameInput = document.getElementById("username");
+    const usernameContainer = document.getElementById("username-container");
 
-    // 🔗 Replace this with your Render backend URL
+    // 🔗 Your backend URL
     const API_URL = "https://deblocked-chat.onrender.com";
     const WS_URL = "wss://deblocked-chat.onrender.com";
 
-    // WebSocket connection
-    const socket = new WebSocket(WS_URL);
+    let username = null;
+    let userColor = null;
 
+    // 32 fixed colors
+    const COLORS = [
+      "#e6194b","#3cb44b","#ffe119","#4363d8","#f58231","#911eb4","#46f0f0","#f032e6",
+      "#bcf60c","#fabebe","#008080","#e6beff","#9a6324","#fffac8","#800000","#aaffc3",
+      "#808000","#ffd8b1","#000075","#808080","#ffffff","#000000",
+      "#ff7f50","#1e90ff","#32cd32","#ff1493","#00ced1","#ff4500","#daa520","#8a2be2",
+      "#deb887","#5f9ea0"
+    ];
+
+    // Assign a random color to each user
+    function assignColor() {
+      return COLORS[Math.floor(Math.random() * COLORS.length)];
+    }
+
+    // Handle setting username
+    function setUsername() {
+      if (usernameInput.value.trim() === "") return;
+      username = usernameInput.value.trim();
+      userColor = assignColor();
+
+      usernameInput.disabled = true;
+      usernameContainer.querySelector("button").disabled = true;
+      msgInput.disabled = false;
+
+      checkInput();
+    }
+
+    // Enable/disable Send button
+    msgInput.addEventListener("input", checkInput);
+    function checkInput() {
+      sendBtn.disabled = msgInput.value.trim() === "" || !username;
+    }
+
+    // WebSocket
+    const socket = new WebSocket(WS_URL);
     socket.onmessage = (e) => {
       const msg = JSON.parse(e.data);
-      addMessage(`${msg.user}: ${msg.text}`);
+      addMessage(msg.user, msg.text, msg.color);
     };
 
     function sendMessage() {
-      const text = document.getElementById("msg").value;
+      const text = msgInput.value.trim();
+      if (!text) return;
+
       fetch(`${API_URL}/api/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user: "me", text })
+        body: JSON.stringify({ user: username, text, color: userColor })
       });
-      document.getElementById("msg").value = "";
+
+      msgInput.value = "";
+      checkInput();
     }
 
-    function addMessage(text) {
+    function addMessage(user, text, color = "#000") {
       const div = document.createElement("div");
-      div.textContent = text;
+      div.classList.add("msg-line");
+
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = user + ": ";
+      nameSpan.style.color = color;
+      nameSpan.classList.add("username");
+
+      const textSpan = document.createElement("span");
+      textSpan.textContent = text;
+
+      div.appendChild(nameSpan);
+      div.appendChild(textSpan);
+
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    // Load recent messages on startup
+    // Load history
     fetch(`${API_URL}/api/messages`)
       .then(res => res.json())
-      .then(data => data.forEach(msg => addMessage(`${msg.user}: ${msg.text}`)));
+      .then(data => data.forEach(msg => addMessage(msg.user, msg.text, msg.color)));
   </script>
 </body>
 </html>
