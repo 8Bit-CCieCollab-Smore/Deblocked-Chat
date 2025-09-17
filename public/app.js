@@ -1,4 +1,4 @@
-const API_URL = "https://voluminous-nicolina-deblocked-a71dba13.koyeb.app";
+const API_URL = "https://deblocked-chat-production.up.railway.app/";
 
 let username = localStorage.getItem("username") || null;
 let currentRoom = "global";
