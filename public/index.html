@@ -35,9 +35,10 @@
           <b id="currentUser">User</b>
           <div class="status">Online</div>
         </div>
-        <label for="pfpUpload" style="cursor:pointer;">📷</label>
-        <input type="file" id="pfpUpload" accept="image/*" style="display:none;">
-        <button id="signOutBtn" class="signout-btn">❌</button>
+        <!-- ⚙️ Settings button -->
+        <button id="settingsBtn" class="icon-btn">
+          <img src="https://cdn-icons-png.flaticon.com/128/3524/3524636.png" alt="settings" class="icon-img"/>
+        </button>
       </div>
     </aside>
 
@@ -48,7 +49,6 @@
       <div id="inputBar">
         <input type="text" id="message" placeholder="Type a message..." />
         <input type="file" id="fileInput" accept="image/*,.pdf,.txt" style="display:none;" />
-        <!-- New attach button with icon -->
         <button id="attachBtn" title="Attach File" class="icon-btn">
           <img src="https://cdn-icons-png.flaticon.com/128/13727/13727342.png" alt="attach" class="icon-img"/>
         </button>
@@ -79,124 +79,34 @@
     </div>
   </div>
 
+  <!-- Settings Overlay -->
+  <div id="settingsOverlay" class="hidden overlay">
+    <div class="overlay-content">
+      <h3>⚙️ Settings</h3>
+      <input type="file" id="pfpUpload" accept="image/*" hidden>
+      <button id="setPfpBtn">Set Profile Picture</button>
+      <button id="signOutBtn">Logout</button>
+      <button id="closeSettingsBtn">Close</button>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="app.js"></script>
   <script>
-    // Attach file input handler
+    // File attach
     const attachBtn = document.getElementById("attachBtn");
     attachBtn.addEventListener("click", () => fileInput.click());
 
-    // Override sendMessage to support file sending
-    const originalSend = sendMessage;
-    sendMessage = async () => {
-      const file = fileInput.files[0];
-      let fileData = null;
-      if (file) {
-        const reader = new FileReader();
-        await new Promise((resolve, reject) => {
-          reader.onload = () => {
-            fileData = reader.result;
-            resolve();
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      }
-      const text = document.getElementById("message").value.trim();
-      if (!text && !fileData) return;
+    // Settings overlay toggle
+    const settingsBtn = document.getElementById("settingsBtn");
+    const settingsOverlay = document.getElementById("settingsOverlay");
+    const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+    const setPfpBtn = document.getElementById("setPfpBtn");
+    const pfpUpload = document.getElementById("pfpUpload");
 
-      const payload = {
-        user: username,
-        text,
-        avatar,
-        timestamp: Date.now(),
-        file: fileData ? fileData : null,
-        fileName: file ? file.name : null
-      };
-
-      try {
-        const res = await fetch(`${API_URL}/api/messages/${currentRoom}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) {
-          document.getElementById("message").value = "";
-          fileInput.value = "";
-          loadMessages();
-          updateConversationPreview(currentRoom, text || "[File]");
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    // Override renderMessages to display files/images
-    const originalRender = renderMessages;
-    renderMessages = (msgs) => {
-      if (!chat) return;
-      const nearBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
-      chat.innerHTML = "";
-      msgs.forEach((m) => {
-        const div = document.createElement("div");
-        div.className = "msg " + (m.user === username ? "self" : "other");
-
-        const pfp = document.createElement("div");
-        pfp.className = "pfp";
-        if (m.avatar) pfp.innerHTML = `<img src="${m.avatar}" alt="pfp">`;
-        else pfp.innerText = m.user[0].toUpperCase();
-
-        const bubble = document.createElement("div");
-        bubble.className = "bubble";
-
-        const meta = document.createElement("div");
-        meta.className = "meta" + (m.user === username ? " self-user" : "");
-        const time = new Date(m.timestamp || Date.now()).toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        meta.innerHTML = `<span><b>${m.user}</b></span><span>${time}</span>`;
-
-        const text = document.createElement("div");
-        text.innerText = m.text || "";
-
-        bubble.appendChild(meta);
-        bubble.appendChild(text);
-
-        // Render file/image
-        if (m.file) {
-          if (m.file.startsWith("data:image")) {
-            const img = document.createElement("img");
-            img.src = m.file;
-            img.style.maxWidth = "200px";
-            img.style.maxHeight = "200px";
-            img.style.display = "block";
-            img.style.marginTop = "5px";
-            bubble.appendChild(img);
-          } else {
-            const link = document.createElement("a");
-            link.href = m.file;
-            link.download = m.fileName || "file";
-            link.innerText = m.fileName || "Download file";
-            link.style.display = "block";
-            link.style.marginTop = "5px";
-            link.style.color = "#ffeb3b";
-            bubble.appendChild(link);
-          }
-        }
-
-        if (m.user === username) {
-          div.appendChild(bubble);
-          div.appendChild(pfp);
-        } else {
-          div.appendChild(pfp);
-          div.appendChild(bubble);
-        }
-
-        chat.appendChild(div);
-      });
-      if (nearBottom) chat.scrollTop = chat.scrollHeight;
-    };
+    settingsBtn.addEventListener("click", () => settingsOverlay.classList.remove("hidden"));
+    closeSettingsBtn.addEventListener("click", () => settingsOverlay.classList.add("hidden"));
+    setPfpBtn.addEventListener("click", () => pfpUpload.click());
   </script>
 </body>
 </html>
