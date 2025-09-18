@@ -86,8 +86,10 @@ window.onload = async () => {
 
   if (username) startPresence();
 
+  // --- Polling loops ---
   setInterval(loadMessages, 2000);
   setInterval(updateOnlineCount, 10000);
+  setInterval(loadUserRooms, 5000); // NEW: keeps DM list fresh for receivers
 };
 
 // --- ACCOUNT ---
