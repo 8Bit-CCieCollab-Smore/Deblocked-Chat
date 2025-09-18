@@ -18,7 +18,7 @@ const currentUserPfp = $("currentUserPfp");
 const sendBtn = $("sendBtn");
 const messageInput = $("message");
 const chat = $("chat");
-const newChatBtn = $("newChatBtn");
+const newChatBtn = $("newChatBtn"); // now an icon
 const modal = $("modal");
 const newChatUser = $("newChatUser");
 const startChatBtn = $("startChatBtn");
@@ -28,10 +28,14 @@ const errorMsg = $("errorMsg");
 const closeErrorBtn = $("closeErrorBtn");
 const conversationsList = $("conversations");
 const chatHeader = $("chatHeader");
-const signOutBtn = $("signOutBtn");
-const pfpUpload = $("pfpUpload");
 const fileInput = $("fileInput"); 
 const attachBtn = $("attachBtn");
+const settingsBtn = $("settingsBtn"); // ⚙️ cogwheel
+const settingsOverlay = $("settingsOverlay");
+const closeSettingsBtn = $("closeSettingsBtn");
+const logoutBtn = $("logoutBtn");
+const setPfpBtn = $("setPfpBtn");
+const pfpUpload = $("pfpUpload");
 
 // --- INIT ---
 window.onload = async () => {
@@ -52,7 +56,12 @@ window.onload = async () => {
   if (closeModalBtn) closeModalBtn.onclick = () => modal?.classList.add("hidden");
   if (startChatBtn) startChatBtn.onclick = startChat;
   if (closeErrorBtn) closeErrorBtn.onclick = () => errorPopup?.classList.add("hidden");
-  if (signOutBtn) signOutBtn.onclick = signOut;
+
+  // ⚙️ Settings
+  if (settingsBtn) settingsBtn.onclick = () => settingsOverlay?.classList.remove("hidden");
+  if (closeSettingsBtn) closeSettingsBtn.onclick = () => settingsOverlay?.classList.add("hidden");
+  if (logoutBtn) logoutBtn.onclick = () => signOut();
+  if (setPfpBtn) setPfpBtn.onclick = () => pfpUpload?.click();
 
   // Restore session UI
   if (username) {
@@ -89,7 +98,7 @@ window.onload = async () => {
   // --- Polling loops ---
   setInterval(loadMessages, 2000);
   setInterval(updateOnlineCount, 10000);
-  setInterval(loadUserRooms, 5000); // NEW: keeps DM list fresh for receivers
+  setInterval(loadUserRooms, 5000);
 };
 
 // --- ACCOUNT ---
@@ -156,7 +165,6 @@ function renderMessages(msgs) {
     bubble.appendChild(meta);
     if (m.text) bubble.appendChild(text);
 
-    // File/Image
     if (m.file) {
       const fileEl = document.createElement("div");
       fileEl.style.marginTop = "6px";
