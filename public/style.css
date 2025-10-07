@@ -1024,3 +1024,61 @@ main#chat-area {
   border-radius: 50%;
 }
 
+/* 🧠 Ultra-Final Fix: Force proper chat alignment */
+#chat {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.msg {
+  display: flex !important;
+  width: 100% !important;
+  margin: 10px 0 !important;
+  gap: 10px !important;
+  align-items: flex-end !important;
+  max-width: none !important; /* removes the 75% cutoff */
+}
+
+/* Left side messages */
+.msg.other {
+  justify-content: flex-start !important;
+  flex-direction: row !important;
+}
+
+/* Right side messages */
+.msg.self {
+  justify-content: flex-end !important;
+  flex-direction: row-reverse !important;
+  text-align: right !important;
+}
+
+/* Bubble appearance */
+.msg .bubble {
+  display: inline-block;
+  max-width: 70% !important;
+  word-wrap: break-word;
+}
+
+.msg.self .bubble {
+  margin-left: auto !important;
+  background: linear-gradient(135deg, #49b3ff, #2e74ff) !important;
+  border-radius: 16px 16px 4px 16px !important;
+  color: #fff !important;
+}
+
+.msg.other .bubble {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px 16px 16px 4px !important;
+  color: #e7e7e7 !important;
+}
+
+/* Avatar sizing consistency */
+.msg .pfp {
+  width: 48px !important;
+  height: 48px !important;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
