@@ -699,3 +699,67 @@ main#chat-area {
   border-bottom: 2px solid rgba(255,255,255,0.05);
   padding-bottom: 4px;
 }
+
+/* --- Profile Footer Area --- */
+#userFooter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  overflow: hidden;
+  height: 60px;
+  cursor: default;
+  transition: 0.25s ease;
+}
+
+#userFooter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(20px) brightness(0.6);
+  transform: scale(1.2);
+  z-index: 0;
+}
+
+/* Foreground (pfp, text, icons) stays crisp */
+#userFooter > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* PFP circle */
+#currentUserPfp img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.15);
+}
+
+/* Username + status */
+#userFooter b {
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+}
+#userFooter .status {
+  color: #70ff86;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* Settings icon */
+#settingsBtn {
+  margin-left: auto;
+  background: rgba(255,255,255,0.1);
+  border-radius: 50%;
+  padding: 6px;
+  transition: 0.2s ease;
+}
+#settingsBtn:hover {
+  background: rgba(255,255,255,0.25);
+}
