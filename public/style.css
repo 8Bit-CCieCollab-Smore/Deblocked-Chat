@@ -1136,3 +1136,47 @@ main#chat-area {
 .msg.self .bubble {
   margin-left: auto !important; /* prevents it from floating mid-screen */
 }
+
+/* 🧩 FINAL FIX — Proper message lane layout */
+#chat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.msg {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  margin: 10px 0 !important;
+}
+
+/* Left messages stay left */
+.msg.other {
+  justify-content: flex-start !important;
+}
+
+/* Right messages snap flush to right edge */
+.msg.self {
+  flex-direction: row-reverse !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  text-align: right !important;
+  width: 100% !important;
+}
+
+/* Bubbles behave inside full width row */
+.msg.self .bubble {
+  margin-left: auto !important;
+  background: linear-gradient(135deg, #49b3ff, #2e74ff) !important;
+  border-radius: 16px 16px 4px 16px !important;
+  color: #fff !important;
+}
+
+/* Other side bubble */
+.msg.other .bubble {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px 16px 16px 4px !important;
+  color: #eee !important;
+}
