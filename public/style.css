@@ -828,3 +828,16 @@ main#chat-area {
   position: relative;
   z-index: 1;
 }
+
+#userFooter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--user-banner);
+  background-size: cover;
+  background-position: center;
+  filter: blur(18px) brightness(0.55);
+  transform: scale(1.25);
+  z-index: 0;
+  transition: background-image 0.3s ease, filter 0.4s ease;
+}
