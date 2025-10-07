@@ -1103,3 +1103,19 @@ main#chat-area {
   color: #fff !important;
   border-radius: 16px 16px 4px 16px !important;
 }
+
+/* 🕒 Meta text spacing and cleaner time style */
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* space between username and time */
+  font-size: 12px;
+  opacity: 0.9;
+  color: #bbb;
+}
+
+.meta .timestamp {
+  color: #7fb7ff;
+  font-weight: 500;
+  opacity: 0.8;
+}
