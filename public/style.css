@@ -1082,3 +1082,24 @@ main#chat-area {
   overflow: hidden;
   background: rgba(255, 255, 255, 0.05);
 }
+
+/* 🎯 Final Mirror Alignment — move PFP to the right of your message */
+.msg.self {
+  justify-content: flex-end !important;
+  flex-direction: row !important; /* bubble THEN pfp */
+}
+
+.msg.self .pfp {
+  order: 2; /* moves it to the far right */
+  margin-left: 8px !important;
+  margin-right: 0 !important;
+}
+
+.msg.self .bubble {
+  order: 1;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  background: linear-gradient(135deg, #49b3ff, #2e74ff) !important;
+  color: #fff !important;
+  border-radius: 16px 16px 4px 16px !important;
+}
