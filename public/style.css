@@ -963,3 +963,48 @@ main#chat-area {
 .msg.self {
   flex-direction: row-reverse;
 }
+
+/* 🧩 Fix message alignment + bigger PFPs */
+.msg {
+  display: flex;
+  align-items: flex-start; /* fix uneven message height */
+  gap: 10px;
+  margin: 10px 16px;
+}
+
+/* Bigger and centered profile pictures */
+.pfp {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
+}
+
+.pfp img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Your messages mirrored properly */
+.msg.self {
+  flex-direction: row-reverse;
+  align-items: flex-start;
+}
+
+/* Bubble tweak for proportionality */
+.bubble {
+  padding: 12px 18px;
+  border-radius: 14px;
+  font-size: 15.5px;
+  line-height: 1.5;
+  max-width: 65%;
+}
+
