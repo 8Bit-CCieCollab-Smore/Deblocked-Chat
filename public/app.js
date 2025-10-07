@@ -293,18 +293,45 @@ async function loadUserRooms() {
     const res = await fetch(`${API_URL}/api/userRooms/${username}`);
     if (!res.ok) return;
     const { rooms } = await res.json();
-    rooms.forEach(roomId => {
+
+    for (const roomId of rooms) {
       if (!conversations[roomId]) {
-        const name = roomId.startsWith("dm-") ? roomId.split("-").filter(u => u !== username)[0] : "Unknown";
-        conversations[roomId] = { name, preview: "" };
+        let otherName = "Unknown";
+        if (roomId.startsWith("dm-")) {
+          const parts = roomId.split("-").slice(1);
+          otherName = parts.find(n => n !== username) || "Unknown";
+        }
+
+        let avatarUrl = null;
+        try {
+          const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`);
+          if (msgRes.ok) {
+            const msgs = await msgRes.json();
+            const lastMsg = msgs.reverse().find(m => m.user === otherName && m.avatar);
+            if (lastMsg) avatarUrl = lastMsg.avatar;
+          }
+        } catch {}
+
+        conversations[roomId] = { name: otherName, preview: "", avatar: avatarUrl };
+      } else if (!conversations[roomId].avatar) {
+        // Try to refresh missing avatars
+        const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`);
+        if (msgRes.ok) {
+          const msgs = await msgRes.json();
+          const otherName = roomId.split("-").slice(1).find(n => n !== username);
+          const lastMsg = msgs.reverse().find(m => m.user === otherName && m.avatar);
+          if (lastMsg) conversations[roomId].avatar = lastMsg.avatar;
+        }
       }
-    });
+    }
+
     saveConversations();
     loadConversations();
   } catch (e) {
     console.error("Failed to load user rooms", e);
   }
 }
+
 
 function loadConversations() {
   if (!conversationsList) return;
