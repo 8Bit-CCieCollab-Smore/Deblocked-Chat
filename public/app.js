@@ -40,6 +40,7 @@ const pfpUpload = $("pfpUpload");
 // --- INIT ---
 window.onload = async () => {
   try {
+    // Core UI hooks (guard every optional piece)
     if (createAccountBtn) createAccountBtn.onclick = createAccount;
     if (sendBtn) sendBtn.onclick = sendMessage;
     if (attachBtn && fileInput) attachBtn.onclick = () => fileInput.click();
@@ -58,59 +59,68 @@ window.onload = async () => {
     if (startChatBtn) startChatBtn.onclick = startChat;
     if (closeErrorBtn) closeErrorBtn.onclick = () => errorPopup?.classList.add("hidden");
 
-    // ⚙️ Settings
+    // Settings
     if (settingsBtn) settingsBtn.onclick = () => settingsOverlay?.classList.remove("hidden");
     if (closeSettingsBtn) closeSettingsBtn.onclick = () => settingsOverlay?.classList.add("hidden");
     if (logoutBtn) logoutBtn.onclick = signOut;
     if (setPfpBtn) setPfpBtn.onclick = () => pfpUpload?.click();
 
-  // Profile picture upload
-if (pfpUpload) {
-  pfpUpload.addEventListener("change", e => {
-    const file = e.target.files[0];
-    if (!file) return;
+    // PFP upload + blurred banner (CSS var --user-banner)
+    if (pfpUpload) {
+      pfpUpload.addEventListener("change", e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          avatar = ev.target.result;
+          localStorage.setItem("avatar", avatar);
 
-    const reader = new FileReader();
-    reader.onload = ev => {
-      avatar = ev.target.result;
-      localStorage.setItem("avatar", avatar);
+          if (currentUserPfp) {
+            currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
+          }
+          const userFooter = document.getElementById("userFooter");
+          if (userFooter) {
+            userFooter.style.setProperty("--user-banner", `url("${avatar}")`);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
 
-      // Update the small profile picture
-      if (currentUserPfp)
-        currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
+    // Restore session UI
+    if (username) {
+      welcomeScreen?.classList.add("hidden");
+      chatLayout?.classList.remove("hidden");
 
-      // 🖼️ Update the blurred banner behind footer
-      const userFooter = document.getElementById("userFooter");
-      if (userFooter) {
-        userFooter.style.setProperty("--user-bg", `url("${avatar}")`);
+      if (currentUser) currentUser.innerText = username;
+      if (currentUserPfp) {
+        if (avatar) currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
+        else currentUserPfp.innerText = username[0].toUpperCase();
       }
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
+      await loadUserRooms();
+      startPresence();
 
-   // Restore session
-if (username) {
-  welcomeScreen?.classList.add("hidden");
-  chatLayout?.classList.remove("hidden");
+      // ensure banner shows on reload
+      if (avatar) {
+        const userFooter = document.getElementById("userFooter");
+        if (userFooter) {
+          userFooter.style.setProperty("--user-banner", `url("${avatar}")`);
+        }
+      }
+    }
 
-  if (currentUser) currentUser.innerText = username;
-  if (currentUserPfp) {
-    if (avatar) currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
-    else currentUserPfp.innerText = username[0].toUpperCase();
+    loadConversations();
+    loadMessages();
+
+    // Polling loops
+    setInterval(loadMessages, 2000);
+    setInterval(updateOnlineCount, 10000);
+    setInterval(loadUserRooms, 5000);
+  } catch (err) {
+    console.error("Startup failed:", err);
   }
-
-  await loadUserRooms();
-  startPresence();
-
-  // 🟦 ensure banner shows on reload
-  if (avatar) {
-    const userFooter = document.getElementById("userFooter");
-    if (userFooter)
-      userFooter.style.setProperty("--user-banner", `url("${avatar}")`);
-  }
-}
+};
 
 // --- ACCOUNT ---
 function createAccount() {
@@ -140,8 +150,8 @@ function signOut() {
 // --- MESSAGES ---
 async function getCurrentMessages() {
   try {
-    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`);
-    if (!res.ok) return [];
+    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`).catch(() => null);
+    if (!res?.ok) return [];
     return await res.json();
   } catch {
     return [];
@@ -151,7 +161,7 @@ async function getCurrentMessages() {
 async function loadMessages() {
   if (!username) return;
   try {
-    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`);
+    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`).catch(() => null);
     if (!res?.ok) throw new Error("Failed to load messages");
     const data = await res.json();
     renderMessages(data);
@@ -165,27 +175,26 @@ function renderMessages(msgs) {
   const nearBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
   chat.innerHTML = "";
 
-// 📨 If no messages exist, show friendly placeholder
-if (!msgs || msgs.length === 0) {
-  const emptyNotice = document.createElement("div");
-  emptyNotice.innerText = "No messages sent yet";
-  emptyNotice.style.textAlign = "center";
-  emptyNotice.style.opacity = "0.7";
-  emptyNotice.style.marginTop = "20px";
-  emptyNotice.style.fontSize = "14px";
-  chat.appendChild(emptyNotice);
-  return;
-}
+  // Empty state
+  if (!msgs || msgs.length === 0) {
+    const emptyNotice = document.createElement("div");
+    emptyNotice.innerText = "No messages sent yet";
+    emptyNotice.style.textAlign = "center";
+    emptyNotice.style.opacity = "0.75";
+    emptyNotice.style.marginTop = "16px";
+    emptyNotice.style.fontSize = "14px";
+    chat.appendChild(emptyNotice);
+    return;
+  }
 
-msgs.forEach(m => {
-
+  msgs.forEach(m => {
     const div = document.createElement("div");
     div.className = "msg " + (m.user === username ? "self" : "other");
 
     const pfp = document.createElement("div");
     pfp.className = "pfp";
     if (m.avatar) pfp.innerHTML = `<img src="${m.avatar}" alt="pfp">`;
-    else pfp.innerText = m.user[0].toUpperCase();
+    else pfp.innerText = m.user[0]?.toUpperCase() || "?";
 
     const bubble = document.createElement("div");
     bubble.className = "bubble";
@@ -278,10 +287,13 @@ async function sendPayload(payload) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     }).catch(() => null);
+
     if (res?.ok) {
       loadMessages();
       updateConversationPreview(currentRoom, payload.text || payload.fileName || "[File]");
-    } else console.error("Failed to send message");
+    } else {
+      console.error("Failed to send message");
+    }
   } catch (e) {
     console.error("Error sending message", e);
   }
@@ -292,11 +304,11 @@ async function startChat() {
   if (!newChatUser) return;
   const user = newChatUser.value.trim();
   if (!user) return;
-  if (user === username) return showError("You can’t DM yourself!");
+  if (user === username) { showError("You can’t DM yourself!"); return; }
 
   try {
     const res = await fetch(`${API_URL}/api/checkUser/${user}`).catch(() => null);
-    if (!res?.ok) return showError("User does not exist");
+    if (!res?.ok) { showError("User does not exist"); return; }
 
     const create = await fetch(`${API_URL}/api/dm/create`, {
       method: "POST",
@@ -305,11 +317,11 @@ async function startChat() {
     });
     const { roomId } = await create.json();
 
-    // find their avatar from messages if any
+    // Try to get their avatar from existing messages
     let avatarUrl = null;
     try {
-      const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`);
-      if (msgRes.ok) {
+      const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`).catch(() => null);
+      if (msgRes?.ok) {
         const msgs = await msgRes.json();
         const theirs = msgs.find(m => m.user === user && m.avatar);
         if (theirs) avatarUrl = theirs.avatar;
@@ -329,8 +341,8 @@ async function startChat() {
 async function loadUserRooms() {
   if (!username) return;
   try {
-    const res = await fetch(`${API_URL}/api/userRooms/${username}`);
-    if (!res.ok) return;
+    const res = await fetch(`${API_URL}/api/userRooms/${username}`).catch(() => null);
+    if (!res?.ok) return;
     const { rooms } = await res.json();
 
     for (const roomId of rooms) {
@@ -342,19 +354,18 @@ async function loadUserRooms() {
 
       let avatarUrl = null;
       try {
-        const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`);
-        if (msgRes.ok) {
+        const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`).catch(() => null);
+        if (msgRes?.ok) {
           const msgs = await msgRes.json();
-          const lastMsg = [...msgs].reverse().find(m => m.user === otherName && m.avatar);
-          if (lastMsg) avatarUrl = lastMsg.avatar;
+          const lastMsgFromThem = [...msgs].reverse().find(m => m.user === otherName && m.avatar);
+          if (lastMsgFromThem) avatarUrl = lastMsgFromThem.avatar;
         }
       } catch {}
 
       if (!conversations[roomId]) {
         conversations[roomId] = { name: otherName, preview: "", avatar: avatarUrl };
-      } else {
-        if (!conversations[roomId].avatar && avatarUrl)
-          conversations[roomId].avatar = avatarUrl;
+      } else if (!conversations[roomId].avatar && avatarUrl) {
+        conversations[roomId].avatar = avatarUrl;
       }
     }
 
@@ -369,7 +380,7 @@ function loadConversations() {
   if (!conversationsList) return;
   conversationsList.innerHTML = "";
 
-  // Global Chat
+  // Global
   const global = document.createElement("div");
   global.className = "conversation global";
   global.innerHTML = `
@@ -388,7 +399,7 @@ function loadConversations() {
     const conv = conversations[room];
     const avatarHTML = conv.avatar
       ? `<img src="${conv.avatar}" alt="pfp">`
-      : `<span>${conv.name[0].toUpperCase()}</span>`;
+      : `<span>${conv.name[0]?.toUpperCase() || "?"}</span>`;
 
     const div = document.createElement("div");
     div.className = "conversation";
@@ -410,8 +421,11 @@ function loadConversations() {
 function switchRoom(room) {
   currentRoom = room;
   localStorage.setItem("currentRoom", room);
-  if (chatHeader)
-    chatHeader.innerText = room === "global" ? "Global Chat" : `Chat with ${conversations[room]?.name || room}`;
+  if (chatHeader) {
+    chatHeader.innerText = room === "global"
+      ? "Global Chat"
+      : `Chat with ${conversations[room]?.name || room}`;
+  }
   loadMessages();
   if (room === "global") updateOnlineCount();
 }
@@ -438,7 +452,7 @@ function showError(msg) {
 async function updateOnlineCount() {
   try {
     const res = await fetch(`${API_URL}/api/online`).catch(() => null);
-    if (!res?.ok) throw new Error("Failed to fetch online count");
+    if (!res?.ok) return;
     const { count } = await res.json();
 
     const globalTab = document.querySelector("#conversations .conversation.global");
