@@ -64,21 +64,33 @@ window.onload = async () => {
     if (logoutBtn) logoutBtn.onclick = signOut;
     if (setPfpBtn) setPfpBtn.onclick = () => pfpUpload?.click();
 
-    // Profile picture upload
-    if (pfpUpload) {
-      pfpUpload.addEventListener("change", e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-          avatar = ev.target.result;
-          localStorage.setItem("avatar", avatar);
-          if (currentUserPfp)
-            currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
-        };
-        reader.readAsDataURL(file);
-      });
-    }
+  // Profile picture upload
+if (pfpUpload) {
+  pfpUpload.addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+      avatar = ev.target.result;
+      localStorage.setItem("avatar", avatar);
+
+      // Update the small profile picture
+      if (currentUserPfp)
+        currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
+
+      // 🖼️ Update the blurred banner behind footer
+      const userFooter = document.getElementById("userFooter");
+      if (userFooter) {
+        userFooter.style.setProperty("--user-bg", `url("${avatar}")`);
+        // fallback for browsers that ignore CSS vars in pseudo-elements
+        userFooter.style.backgroundImage = `url("${avatar}")`;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 
     // Restore session
     if (username) {
