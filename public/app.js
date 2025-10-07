@@ -18,7 +18,7 @@ const currentUserPfp = $("currentUserPfp");
 const sendBtn = $("sendBtn");
 const messageInput = $("message");
 const chat = $("chat");
-const newChatBtn = $("newChatBtn"); // now an icon
+const newChatBtn = $("newChatBtn");
 const modal = $("modal");
 const newChatUser = $("newChatUser");
 const startChatBtn = $("startChatBtn");
@@ -28,9 +28,9 @@ const errorMsg = $("errorMsg");
 const closeErrorBtn = $("closeErrorBtn");
 const conversationsList = $("conversations");
 const chatHeader = $("chatHeader");
-const fileInput = $("fileInput"); 
+const fileInput = $("fileInput");
 const attachBtn = $("attachBtn");
-const settingsBtn = $("settingsBtn"); // ⚙️ cogwheel
+const settingsBtn = $("settingsBtn");
 const settingsOverlay = $("settingsOverlay");
 const closeSettingsBtn = $("closeSettingsBtn");
 const logoutBtn = $("logoutBtn");
@@ -39,66 +39,70 @@ const pfpUpload = $("pfpUpload");
 
 // --- INIT ---
 window.onload = async () => {
-  if (createAccountBtn) createAccountBtn.onclick = createAccount;
-  if (sendBtn) sendBtn.onclick = sendMessage;
-  if (attachBtn && fileInput) attachBtn.onclick = () => fileInput.click();
+  try {
+    if (createAccountBtn) createAccountBtn.onclick = createAccount;
+    if (sendBtn) sendBtn.onclick = sendMessage;
+    if (attachBtn && fileInput) attachBtn.onclick = () => fileInput.click();
 
-  if (messageInput) {
-    messageInput.addEventListener("keydown", e => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-  }
-
-  if (newChatBtn) newChatBtn.onclick = () => modal?.classList.remove("hidden");
-  if (closeModalBtn) closeModalBtn.onclick = () => modal?.classList.add("hidden");
-  if (startChatBtn) startChatBtn.onclick = startChat;
-  if (closeErrorBtn) closeErrorBtn.onclick = () => errorPopup?.classList.add("hidden");
-
-  // ⚙️ Settings
-  if (settingsBtn) settingsBtn.onclick = () => settingsOverlay?.classList.remove("hidden");
-  if (closeSettingsBtn) closeSettingsBtn.onclick = () => settingsOverlay?.classList.add("hidden");
-  if (logoutBtn) logoutBtn.onclick = () => signOut();
-  if (setPfpBtn) setPfpBtn.onclick = () => pfpUpload?.click();
-
-  // Restore session UI
-  if (username) {
-    welcomeScreen?.classList.add("hidden");
-    chatLayout?.classList.remove("hidden");
-    if (currentUser) currentUser.innerText = username;
-    if (currentUserPfp) {
-      if (avatar) currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
-      else currentUserPfp.innerText = username[0].toUpperCase();
+    if (messageInput) {
+      messageInput.addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
     }
 
-    await loadUserRooms();
+    if (newChatBtn) newChatBtn.onclick = () => modal?.classList.remove("hidden");
+    if (closeModalBtn) closeModalBtn.onclick = () => modal?.classList.add("hidden");
+    if (startChatBtn) startChatBtn.onclick = startChat;
+    if (closeErrorBtn) closeErrorBtn.onclick = () => errorPopup?.classList.add("hidden");
+
+    // ⚙️ Settings
+    if (settingsBtn) settingsBtn.onclick = () => settingsOverlay?.classList.remove("hidden");
+    if (closeSettingsBtn) closeSettingsBtn.onclick = () => settingsOverlay?.classList.add("hidden");
+    if (logoutBtn) logoutBtn.onclick = signOut;
+    if (setPfpBtn) setPfpBtn.onclick = () => pfpUpload?.click();
+
+    // Profile picture upload
+    if (pfpUpload) {
+      pfpUpload.addEventListener("change", e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          avatar = ev.target.result;
+          localStorage.setItem("avatar", avatar);
+          if (currentUserPfp)
+            currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Restore session
+    if (username) {
+      welcomeScreen?.classList.add("hidden");
+      chatLayout?.classList.remove("hidden");
+      if (currentUser) currentUser.innerText = username;
+      if (currentUserPfp) {
+        if (avatar) currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
+        else currentUserPfp.innerText = username[0].toUpperCase();
+      }
+      await loadUserRooms();
+      startPresence();
+    }
+
+    loadConversations();
+    loadMessages();
+
+    // Polling
+    setInterval(loadMessages, 2000);
+    setInterval(updateOnlineCount, 10000);
+    setInterval(loadUserRooms, 5000);
+  } catch (err) {
+    console.error("Startup failed:", err);
   }
-
-  if (pfpUpload) {
-    pfpUpload.addEventListener("change", e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        avatar = ev.target.result;
-        localStorage.setItem("avatar", avatar);
-        if (currentUserPfp) currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  loadConversations();
-  loadMessages();
-
-  if (username) startPresence();
-
-  // --- Polling loops ---
-  setInterval(loadMessages, 2000);
-  setInterval(updateOnlineCount, 10000);
-  setInterval(loadUserRooms, 5000);
 };
 
 // --- ACCOUNT ---
@@ -127,10 +131,21 @@ function signOut() {
 }
 
 // --- MESSAGES ---
-async function loadMessages() {
+async function getCurrentMessages() {
   try {
     const res = await fetch(`${API_URL}/api/messages/${currentRoom}`);
-    if (!res.ok) throw new Error("Failed to load messages");
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+async function loadMessages() {
+  if (!username) return;
+  try {
+    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`);
+    if (!res?.ok) throw new Error("Failed to load messages");
     const data = await res.json();
     renderMessages(data);
   } catch (e) {
@@ -184,6 +199,14 @@ function renderMessages(msgs) {
       bubble.appendChild(fileEl);
     }
 
+    if (m.sending) {
+      const sendingEl = document.createElement("div");
+      sendingEl.style.fontSize = "11px";
+      sendingEl.style.opacity = "0.8";
+      sendingEl.innerText = "sending...";
+      bubble.appendChild(sendingEl);
+    }
+
     if (m.user === username) {
       div.appendChild(bubble);
       div.appendChild(pfp);
@@ -192,15 +215,6 @@ function renderMessages(msgs) {
       div.appendChild(bubble);
     }
 
-if (m.sending) {
-  const sendingEl = document.createElement("div");
-  sendingEl.style.fontSize = "11px";
-  sendingEl.style.opacity = "0.8";
-  sendingEl.innerText = "sending...";
-  bubble.appendChild(sendingEl);
-}
-
-    
     chat.appendChild(div);
   });
 
@@ -211,8 +225,12 @@ async function sendMessage() {
   if (!messageInput) return;
   const text = messageInput.value.trim();
   const file = fileInput?.files[0];
-
   if (!text && !file) return;
+
+  // instant placeholder
+  const tempMsg = { user: username, text, avatar, timestamp: Date.now(), sending: true };
+  const currentMsgs = await getCurrentMessages();
+  renderMessages([...currentMsgs, tempMsg]);
 
   let payload = { user: username, text, avatar, timestamp: Date.now() };
 
@@ -238,11 +256,11 @@ async function sendPayload(payload) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
-    });
-    if (res.ok) {
+    }).catch(() => null);
+    if (res?.ok) {
       loadMessages();
       updateConversationPreview(currentRoom, payload.text || payload.fileName || "[File]");
-    } else console.error("Failed to send message", res.status);
+    } else console.error("Failed to send message");
   } catch (e) {
     console.error("Error sending message", e);
   }
@@ -253,11 +271,11 @@ async function startChat() {
   if (!newChatUser) return;
   const user = newChatUser.value.trim();
   if (!user) return;
-  if (user === username) { showError("You can’t DM yourself!"); return; }
+  if (user === username) return showError("You can’t DM yourself!");
 
   try {
-    const res = await fetch(`${API_URL}/api/checkUser/${user}`);
-    if (res.status !== 200) { showError("User does not exist"); return; }
+    const res = await fetch(`${API_URL}/api/checkUser/${user}`).catch(() => null);
+    if (!res?.ok) return showError("User does not exist");
 
     const create = await fetch(`${API_URL}/api/dm/create`, {
       method: "POST",
@@ -266,14 +284,14 @@ async function startChat() {
     });
     const { roomId } = await create.json();
 
-    // Try to get their avatar (from past msgs)
+    // find their avatar from messages if any
     let avatarUrl = null;
     try {
       const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`);
       if (msgRes.ok) {
         const msgs = await msgRes.json();
-        const otherMsg = msgs.find(m => m.user === user && m.avatar);
-        if (otherMsg) avatarUrl = otherMsg.avatar;
+        const theirs = msgs.find(m => m.user === user && m.avatar);
+        if (theirs) avatarUrl = theirs.avatar;
       }
     } catch {}
 
@@ -287,41 +305,35 @@ async function startChat() {
   }
 }
 
-
 async function loadUserRooms() {
+  if (!username) return;
   try {
     const res = await fetch(`${API_URL}/api/userRooms/${username}`);
     if (!res.ok) return;
     const { rooms } = await res.json();
 
     for (const roomId of rooms) {
-      if (!conversations[roomId]) {
-        let otherName = "Unknown";
-        if (roomId.startsWith("dm-")) {
-          const parts = roomId.split("-").slice(1);
-          otherName = parts.find(n => n !== username) || "Unknown";
-        }
+      let otherName = "Unknown";
+      if (roomId.startsWith("dm-")) {
+        const parts = roomId.split("-").slice(1);
+        otherName = parts.find(n => n !== username) || "Unknown";
+      }
 
-        let avatarUrl = null;
-        try {
-          const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`);
-          if (msgRes.ok) {
-            const msgs = await msgRes.json();
-            const lastMsg = msgs.reverse().find(m => m.user === otherName && m.avatar);
-            if (lastMsg) avatarUrl = lastMsg.avatar;
-          }
-        } catch {}
-
-        conversations[roomId] = { name: otherName, preview: "", avatar: avatarUrl };
-      } else if (!conversations[roomId].avatar) {
-        // Try to refresh missing avatars
+      let avatarUrl = null;
+      try {
         const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`);
         if (msgRes.ok) {
           const msgs = await msgRes.json();
-          const otherName = roomId.split("-").slice(1).find(n => n !== username);
-          const lastMsg = msgs.reverse().find(m => m.user === otherName && m.avatar);
-          if (lastMsg) conversations[roomId].avatar = lastMsg.avatar;
+          const lastMsg = [...msgs].reverse().find(m => m.user === otherName && m.avatar);
+          if (lastMsg) avatarUrl = lastMsg.avatar;
         }
+      } catch {}
+
+      if (!conversations[roomId]) {
+        conversations[roomId] = { name: otherName, preview: "", avatar: avatarUrl };
+      } else {
+        if (!conversations[roomId].avatar && avatarUrl)
+          conversations[roomId].avatar = avatarUrl;
       }
     }
 
@@ -331,7 +343,6 @@ async function loadUserRooms() {
     console.error("Failed to load user rooms", e);
   }
 }
-
 
 function loadConversations() {
   if (!conversationsList) return;
@@ -354,14 +365,14 @@ function loadConversations() {
   Object.keys(conversations).forEach(room => {
     if (room === "global") return;
     const conv = conversations[room];
-    const avatar = conv.avatar
+    const avatarHTML = conv.avatar
       ? `<img src="${conv.avatar}" alt="pfp">`
       : `<span>${conv.name[0].toUpperCase()}</span>`;
 
     const div = document.createElement("div");
     div.className = "conversation";
     div.innerHTML = `
-      <div class="pfp">${avatar}</div>
+      <div class="pfp">${avatarHTML}</div>
       <div>
         <b>${conv.name}</b>
         <div class="preview">${conv.preview || ""}</div>
@@ -375,31 +386,11 @@ function loadConversations() {
   updateOnlineCount();
 }
 
-  // Global Chat
-  const global = document.createElement("div");
-  global.className = "conversation global";
-  global.innerHTML = `<div class="pfp">🌍</div><div><b class="title">Global Chat</b><div class="preview">${conversations["global"]?.preview || ""}</div></div><span class="badge"></span>`;
-  global.onclick = () => switchRoom("global");
-  conversationsList.appendChild(global);
-
-  // DMs
-  Object.keys(conversations).forEach(room => {
-    if (room === "global") return;
-    const conv = conversations[room];
-    const div = document.createElement("div");
-    div.className = "conversation";
-    div.innerHTML = `<div class="pfp">${conv.name[0].toUpperCase()}</div><div><b>${conv.name}</b><div class="preview">${conv.preview || ""}</div></div><span class="badge"></span>`;
-    div.onclick = () => switchRoom(room);
-    conversationsList.appendChild(div);
-  });
-
-  updateOnlineCount();
-}
-
 function switchRoom(room) {
   currentRoom = room;
   localStorage.setItem("currentRoom", room);
-  chatHeader.innerText = room === "global" ? "Global Chat" : `Chat with ${conversations[room].name}`;
+  if (chatHeader)
+    chatHeader.innerText = room === "global" ? "Global Chat" : `Chat with ${conversations[room]?.name || room}`;
   loadMessages();
   if (room === "global") updateOnlineCount();
 }
@@ -425,8 +416,8 @@ function showError(msg) {
 // --- Online presence ---
 async function updateOnlineCount() {
   try {
-    const res = await fetch(`${API_URL}/api/online`);
-    if (!res.ok) throw new Error("Failed to fetch online count");
+    const res = await fetch(`${API_URL}/api/online`).catch(() => null);
+    if (!res?.ok) throw new Error("Failed to fetch online count");
     const { count } = await res.json();
 
     const globalTab = document.querySelector("#conversations .conversation.global");
@@ -434,7 +425,9 @@ async function updateOnlineCount() {
       const titleEl = globalTab.querySelector(".title");
       if (titleEl) titleEl.innerText = `Global Chat - ${count} Online`;
     }
-  } catch (e) { console.error("Error updating online count", e); }
+  } catch (e) {
+    console.error("Error updating online count", e);
+  }
 }
 
 function startPresence() {
@@ -457,5 +450,7 @@ async function pingOnline() {
       body: JSON.stringify({ user: username }),
       keepalive: true
     });
-  } catch (e) { console.error("Presence ping failed", e); }
+  } catch (e) {
+    console.error("Presence ping failed", e);
+  }
 }
