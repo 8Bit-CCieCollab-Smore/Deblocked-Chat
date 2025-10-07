@@ -192,6 +192,15 @@ function renderMessages(msgs) {
       div.appendChild(bubble);
     }
 
+if (m.sending) {
+  const sendingEl = document.createElement("div");
+  sendingEl.style.fontSize = "11px";
+  sendingEl.style.opacity = "0.8";
+  sendingEl.innerText = "sending...";
+  bubble.appendChild(sendingEl);
+}
+
+    
     chat.appendChild(div);
   });
 
