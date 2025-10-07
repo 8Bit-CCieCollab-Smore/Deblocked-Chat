@@ -763,3 +763,35 @@ main#chat-area {
 #settingsBtn:hover {
   background: rgba(255,255,255,0.25);
 }
+
+/* --- Profile Footer (blurred banner) --- */
+#userFooter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  overflow: hidden;
+  height: 60px;
+  cursor: default;
+  transition: 0.25s ease;
+  background: rgba(40, 55, 75, 0.8); /* fallback if no pfp set */
+}
+
+/* blurred banner uses CSS var from JS */
+#userFooter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--user-banner, rgba(40, 55, 75, 0.8)) center/cover no-repeat;
+  filter: blur(20px) brightness(0.6);
+  transform: scale(1.3);
+  z-index: 0;
+  transition: background-image 0.3s ease;
+}
+
+#userFooter > * {
+  position: relative;
+  z-index: 1;
+}
