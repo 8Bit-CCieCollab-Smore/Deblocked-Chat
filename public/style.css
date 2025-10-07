@@ -1119,3 +1119,25 @@ main#chat-area {
   font-weight: 500;
   opacity: 0.8;
 }
+
+/* 🕒 Meta username/time fix */
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* adds spacing between name and time */
+  font-size: 12px;
+  color: #bbb;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.meta .username {
+  color: #fff;
+  font-weight: 600;
+}
+
+.meta .timestamp {
+  color: #7fb7ff;
+  font-weight: 500;
+  opacity: 0.8;
+}
