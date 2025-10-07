@@ -157,7 +157,21 @@ function renderMessages(msgs) {
   if (!chat) return;
   const nearBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
   chat.innerHTML = "";
-  msgs.forEach(m => {
+
+// 📨 If no messages exist, show friendly placeholder
+if (!msgs || msgs.length === 0) {
+  const emptyNotice = document.createElement("div");
+  emptyNotice.innerText = "No messages sent yet";
+  emptyNotice.style.textAlign = "center";
+  emptyNotice.style.opacity = "0.7";
+  emptyNotice.style.marginTop = "20px";
+  emptyNotice.style.fontSize = "14px";
+  chat.appendChild(emptyNotice);
+  return;
+}
+
+msgs.forEach(m => {
+
     const div = document.createElement("div");
     div.className = "msg " + (m.user === username ? "self" : "other");
 
