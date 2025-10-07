@@ -394,26 +394,33 @@ function loadConversations() {
   conversationsList.appendChild(global);
 
   // DMs
-  Object.keys(conversations).forEach(room => {
-    if (room === "global") return;
-    const conv = conversations[room];
-    const avatarHTML = conv.avatar
-      ? `<img src="${conv.avatar}" alt="pfp">`
-      : `<span>${conv.name[0]?.toUpperCase() || "?"}</span>`;
+ Object.keys(conversations).forEach(room => {
+  if (room === "global") return;
+  const conv = conversations[room];
+  const avatarHTML = conv.avatar
+    ? `<img src="${conv.avatar}" alt="pfp">`
+    : `<span>${conv.name[0]?.toUpperCase() || "?"}</span>`;
 
-    const div = document.createElement("div");
-    div.className = "conversation";
-    div.innerHTML = `
-      <div class="pfp">${avatarHTML}</div>
-      <div>
-        <b>${conv.name}</b>
-        <div class="preview">${conv.preview || ""}</div>
-      </div>
-      <span class="badge"></span>
-    `;
-    div.onclick = () => switchRoom(room);
-    conversationsList.appendChild(div);
-  });
+  const div = document.createElement("div");
+  div.className = "conversation";
+  div.innerHTML = `
+    <div class="pfp">${avatarHTML}</div>
+    <div>
+      <b>${conv.name}</b>
+      <div class="preview">${conv.preview || ""}</div>
+    </div>
+    <span class="badge"></span>
+  `;
+
+  // 🟦 Apply blurred banner from avatar
+  if (conv.avatar) {
+    div.style.setProperty("--conv-banner", `url("${conv.avatar}")`);
+  }
+
+  div.onclick = () => switchRoom(room);
+  conversationsList.appendChild(div);
+});
+
 
   updateOnlineCount();
 }
