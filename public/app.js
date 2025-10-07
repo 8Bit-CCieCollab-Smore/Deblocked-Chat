@@ -83,8 +83,6 @@ if (pfpUpload) {
       const userFooter = document.getElementById("userFooter");
       if (userFooter) {
         userFooter.style.setProperty("--user-bg", `url("${avatar}")`);
-        // fallback for browsers that ignore CSS vars in pseudo-elements
-        userFooter.style.backgroundImage = `url("${avatar}")`;
       }
     };
     reader.readAsDataURL(file);
@@ -92,30 +90,27 @@ if (pfpUpload) {
 }
 
 
-    // Restore session
-    if (username) {
-      welcomeScreen?.classList.add("hidden");
-      chatLayout?.classList.remove("hidden");
-      if (currentUser) currentUser.innerText = username;
-      if (currentUserPfp) {
-        if (avatar) currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
-        else currentUserPfp.innerText = username[0].toUpperCase();
-      }
-      await loadUserRooms();
-      startPresence();
-    }
+   // Restore session
+if (username) {
+  welcomeScreen?.classList.add("hidden");
+  chatLayout?.classList.remove("hidden");
 
-    loadConversations();
-    loadMessages();
-
-    // Polling
-    setInterval(loadMessages, 2000);
-    setInterval(updateOnlineCount, 10000);
-    setInterval(loadUserRooms, 5000);
-  } catch (err) {
-    console.error("Startup failed:", err);
+  if (currentUser) currentUser.innerText = username;
+  if (currentUserPfp) {
+    if (avatar) currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
+    else currentUserPfp.innerText = username[0].toUpperCase();
   }
-};
+
+  await loadUserRooms();
+  startPresence();
+
+  // 🟦 ensure banner shows on reload
+  if (avatar) {
+    const userFooter = document.getElementById("userFooter");
+    if (userFooter)
+      userFooter.style.setProperty("--user-banner", `url("${avatar}")`);
+  }
+}
 
 // --- ACCOUNT ---
 function createAccount() {
