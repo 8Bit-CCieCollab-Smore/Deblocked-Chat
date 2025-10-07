@@ -80,16 +80,21 @@
     </div>
   </div>
 
-  <!-- Settings Overlay -->
-  <div id="settingsOverlay" class="hidden overlay">
-    <div class="overlay-content">
+ <!-- Settings Overlay -->
+<div id="settingsOverlay" class="hidden overlay">
+  <div class="settings-card">
+    <header class="settings-header">
       <h3>⚙️ Settings</h3>
-      <input type="file" id="pfpUpload" accept="image/*" hidden>
-      <button id="setPfpBtn">Set Profile Picture</button>
-      <button id="logoutBtn">Logout</button>
-      <button id="closeSettingsBtn">Close</button>
+      <button id="closeSettingsBtn" class="close-btn">✕</button>
+    </header>
+
+    <div class="settings-content">
+      <button id="setPfpBtn" class="ui-btn blue">Set Profile Picture</button>
+      <button id="logoutBtn" class="ui-btn red">Logout</button>
     </div>
   </div>
+</div>
+
 
   <!-- Scripts -->
   <script src="app.js"></script>
