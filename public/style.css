@@ -959,224 +959,68 @@ main#chat-area {
   align-items: flex-end;
 }
 
-/* Align your own pfp (right side) perfectly */
-.msg.self {
-  flex-direction: row-reverse;
-}
-
-/* 🧩 Fix message alignment + bigger PFPs */
-.msg {
-  display: flex;
-  align-items: flex-start; /* fix uneven message height */
-  gap: 10px;
-  margin: 10px 16px;
-}
-
-/* Bigger and centered profile pictures */
-.pfp {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.25);
-}
-
-.pfp img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-
-/* Your messages mirrored properly */
-.msg.self {
-  flex-direction: row-reverse;
-  align-items: flex-start;
-}
-
-/* Bubble tweak for proportionality */
-.bubble {
-  padding: 12px 18px;
-  border-radius: 14px;
-  font-size: 15.5px;
-  line-height: 1.5;
-  max-width: 65%;
-}
-
-/* 🔧 Fix alignment + enlarge avatars + keep both sides even */
-.msg {
-  display: flex;
-  align-items: center; /* centers avatar & bubble vertically */
-  gap: 12px;
-  margin: 10px 18px;
-}
-
-/* Your own messages mirrored correctly */
-.msg.self {
-  flex-direction: row-reverse;
-  align-items: center; /* same baseline alignment */
-}
-
-/* Bigger, proportional avatars */
-.pfp {
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
-}
-
-.pfp img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-
-/* Balanced, slightly larger bubbles */
-.bubble {
-  padding: 14px 20px;
-  border-radius: 16px;
-  font-size: 16px;
-  line-height: 1.5;
-  max-width: 70%;
-}
-
-/* ✅ FINAL FIX — message alignment + proper PFP scale */
-.msg {
-  display: flex !important;
-  align-items: center !important;
-  gap: 14px !important;
-  margin: 12px 18px !important;
-}
-
-.msg.self {
-  flex-direction: row-reverse !important;
-  align-items: center !important;
-}
-
-.pfp {
-  width: 60px !important;
-  height: 60px !important;
-  border-radius: 50% !important;
-  overflow: hidden !important;
-  flex-shrink: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
-}
-
-.pfp img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  border-radius: 50% !important;
-}
-
-.bubble {
-  padding: 15px 22px !important;
-  border-radius: 16px !important;
-  font-size: 16.5px !important;
-  line-height: 1.5 !important;
-  max-width: 70% !important;
-}
-
-/* ✅ Properly right-align your own messages */
-.msg.self {
-  flex-direction: row-reverse !important;
-  align-items: center !important;
-  justify-content: flex-end !important; /* pushes your message to the right */
-  text-align: right !important;
-}
-
-.msg.self .bubble {
-  background: linear-gradient(135deg, #49b3ff 0%, #2e74ff 100%) !important;
-  color: #fff !important;
-  border-radius: 16px 16px 4px 16px !important;
-  margin-left: auto !important;
-}
-
-.msg.other .bubble {
-  background: rgba(255, 255, 255, 0.07) !important;
-  color: #e7e7e7 !important;
-  border-radius: 16px 16px 16px 4px !important;
-}
-
-/* ✅ Final alignment fix for right-side messages */
-.msg {
-  width: 100% !important; /* ensures full row width */
-  display: flex !important;
-  gap: 14px !important;
-  margin: 12px 18px !important;
-}
-
-.msg.self {
-  flex-direction: row-reverse !important;
-  justify-content: flex-end !important; /* push to right edge */
-  align-items: center !important;
-  text-align: right !important;
-}
-
-.msg.other {
-  justify-content: flex-start !important; /* keep others left */
-}
-
-.msg.self .bubble {
-  margin-left: auto !important; /* prevents it from floating mid-screen */
-}
-
-/* 🧩 FINAL FIX — Proper message lane layout */
+/* 🧩 THE FINAL FIX — guaranteed right/left chat layout */
 #chat {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .msg {
-  width: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 14px !important;
-  margin: 10px 0 !important;
+  width: 100%;
+  display: flex;
+  margin: 10px 0;
+  gap: 10px;
 }
 
-/* Left messages stay left */
+/* LEFT messages */
 .msg.other {
-  justify-content: flex-start !important;
+  justify-content: flex-start;
+  flex-direction: row;
 }
 
-/* Right messages snap flush to right edge */
+/* RIGHT messages */
 .msg.self {
-  flex-direction: row-reverse !important;
-  justify-content: flex-end !important;
-  align-items: center !important;
-  text-align: right !important;
-  width: 100% !important;
+  justify-content: flex-end;
+  flex-direction: row-reverse;
+  text-align: right;
 }
 
-/* Bubbles behave inside full width row */
+/* Bubble tweaks */
+.msg .bubble {
+  max-width: 70%;
+  font-size: 16px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  line-height: 1.4;
+}
+
 .msg.self .bubble {
-  margin-left: auto !important;
-  background: linear-gradient(135deg, #49b3ff, #2e74ff) !important;
-  border-radius: 16px 16px 4px 16px !important;
-  color: #fff !important;
+  background: linear-gradient(135deg, #49b3ff, #2e74ff);
+  color: #fff;
+  border-radius: 16px 16px 4px 16px;
 }
 
-/* Other side bubble */
 .msg.other .bubble {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-radius: 16px 16px 16px 4px !important;
-  color: #eee !important;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e7e7e7;
+  border-radius: 16px 16px 16px 4px;
 }
+
+/* PFP alignment */
+.msg .pfp {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.msg .pfp img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
