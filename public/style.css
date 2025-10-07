@@ -1114,3 +1114,25 @@ main#chat-area {
   border-radius: 16px 16px 16px 4px !important;
 }
 
+/* ✅ Final alignment fix for right-side messages */
+.msg {
+  width: 100% !important; /* ensures full row width */
+  display: flex !important;
+  gap: 14px !important;
+  margin: 12px 18px !important;
+}
+
+.msg.self {
+  flex-direction: row-reverse !important;
+  justify-content: flex-end !important; /* push to right edge */
+  align-items: center !important;
+  text-align: right !important;
+}
+
+.msg.other {
+  justify-content: flex-start !important; /* keep others left */
+}
+
+.msg.self .bubble {
+  margin-left: auto !important; /* prevents it from floating mid-screen */
+}
