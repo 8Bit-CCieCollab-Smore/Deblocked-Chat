@@ -257,7 +257,18 @@ async function startChat() {
     });
     const { roomId } = await create.json();
 
-    conversations[roomId] = { name: user, preview: "" };
+    // Try to get their avatar (from past msgs)
+    let avatarUrl = null;
+    try {
+      const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`);
+      if (msgRes.ok) {
+        const msgs = await msgRes.json();
+        const otherMsg = msgs.find(m => m.user === user && m.avatar);
+        if (otherMsg) avatarUrl = otherMsg.avatar;
+      }
+    } catch {}
+
+    conversations[roomId] = { name: user, preview: "", avatar: avatarUrl };
     saveConversations();
     loadConversations();
     switchRoom(roomId);
@@ -266,6 +277,7 @@ async function startChat() {
     showError("Server error");
   }
 }
+
 
 async function loadUserRooms() {
   try {
