@@ -340,6 +340,44 @@ function loadConversations() {
   // Global Chat
   const global = document.createElement("div");
   global.className = "conversation global";
+  global.innerHTML = `
+    <div class="pfp">🌍</div>
+    <div>
+      <b class="title">Global Chat</b>
+      <div class="preview">${conversations["global"]?.preview || ""}</div>
+    </div>
+  `;
+  global.onclick = () => switchRoom("global");
+  conversationsList.appendChild(global);
+
+  // DMs
+  Object.keys(conversations).forEach(room => {
+    if (room === "global") return;
+    const conv = conversations[room];
+    const avatar = conv.avatar
+      ? `<img src="${conv.avatar}" alt="pfp">`
+      : `<span>${conv.name[0].toUpperCase()}</span>`;
+
+    const div = document.createElement("div");
+    div.className = "conversation";
+    div.innerHTML = `
+      <div class="pfp">${avatar}</div>
+      <div>
+        <b>${conv.name}</b>
+        <div class="preview">${conv.preview || ""}</div>
+      </div>
+      <span class="badge"></span>
+    `;
+    div.onclick = () => switchRoom(room);
+    conversationsList.appendChild(div);
+  });
+
+  updateOnlineCount();
+}
+
+  // Global Chat
+  const global = document.createElement("div");
+  global.className = "conversation global";
   global.innerHTML = `<div class="pfp">🌍</div><div><b class="title">Global Chat</b><div class="preview">${conversations["global"]?.preview || ""}</div></div><span class="badge"></span>`;
   global.onclick = () => switchRoom("global");
   conversationsList.appendChild(global);
