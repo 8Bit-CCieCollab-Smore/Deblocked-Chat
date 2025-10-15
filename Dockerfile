@@ -1,20 +1,18 @@
-# Use official Node.js image
+# Use Node 18
 FROM node:18
 
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json first (for caching)
+# Copy package.json and install dependencies
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install --production
 
-# Copy rest of app files
+# Copy the rest of the app
 COPY . .
 
-# Expose the same port your app uses
-EXPOSE 3000
+# Expose Fly/Railway port
+EXPOSE 8080
 
-# Start the server
-CMD ["node", "server.js"]
+# Start the server (CommonJS fix)
+CMD ["node", "server.cjs"]
