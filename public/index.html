@@ -2,87 +2,115 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Deblocked Chat V3 Ultra</title>
-  <link rel="stylesheet" href="./style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Deblocked Chat V3 • Ultra</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./style.css?v=3" />
 </head>
-<body>
-  <!-- starfield background -->
+<body class="no-scroll">
+  <!-- full-viewport starfield (rendered behind everything) -->
   <canvas id="stars" aria-hidden="true"></canvas>
 
-  <!-- Intro Overlay -->
+  <!-- Intro / onboarding (blocks scroll until dismissed) -->
   <div id="intro" class="intro" role="dialog" aria-modal="true" aria-labelledby="introTitle">
     <div class="intro-card">
-      <h1 id="introTitle">Welcome to Deblocked Chat</h1>
-      <p class="muted">Pick a display name and (optionally) an avatar. Avatars and settings sync across devices.</p>
+      <header class="intro-head">
+        <div class="logo-dot" aria-hidden="true"></div>
+        <h1 id="introTitle">Welcome to Deblocked Chat</h1>
+        <span class="badge">Ultra</span>
+      </header>
 
-      <label class="stack">
+      <p class="muted">Pick a display name and (optionally) an avatar. Avatars + settings sync across devices.</p>
+
+      <label class="field">
         <span class="label">Display name</span>
-        <input id="introName" class="input" maxlength="24" placeholder="Your name" autocomplete="off" />
+        <input id="introName" class="input" maxlength="24" placeholder="Your name" />
       </label>
 
-      <label class="stack">
-        <span class="label">Avatar (PNG/JPEG/WEBP)</span>
+      <div class="row upload">
+        <label class="label">Avatar (PNG/JPEG/WEBP)</label>
         <input id="introAvatar" type="file" accept="image/png,image/jpeg,image/webp" />
-      </label>
-
-      <div class="preview">
-        <img id="introAvatarPreview" class="avatar mini" alt="preview" />
       </div>
 
-      <p class="muted small">You can tweak gradients & banner color later in Settings.</p>
+      <div class="actions">
+        <button id="introStart" class="btn primary">Start chatting</button>
+      </div>
 
-      <button id="introStart" class="btn primary">Start chatting</button>
+      <p class="tip">You can tweak gradients & banner color later in <em>Settings</em>.</p>
     </div>
   </div>
 
   <!-- App -->
-  <div id="app" class="app">
+  <div id="app" class="app" aria-hidden="true">
     <header id="banner" class="banner">
-      <div class="brand-left">
-        <span class="dot"></span>
-        <span class="title">Deblocked Chat V3</span>
+      <div class="brand">
+        <div class="dot" aria-hidden="true"></div>
+        <div class="title">Deblocked Chat V3</div>
+        <div class="sub">Ultra</div>
       </div>
-      <div class="online-wrap">
-        <div id="onlineList" class="online-list"></div>
-        <div class="names-ticker"><div id="namesTickerInner" class="names-inner"></div></div>
-        <span id="onlineCount" class="online-count">0 online</span>
+
+      <div class="online">
+        <div id="onlineList" class="online-list" title="Online users"></div>
+        <div id="onlineCount" class="online-count">0 online</div>
       </div>
-      <div class="right">
-        <button id="settingsBtn" class="btn ghost" title="Settings">⚙️</button>
+
+      <div class="bar-actions">
+        <button id="settingsBtn" class="btn icon ghost" aria-haspopup="dialog" title="Settings">⚙️</button>
       </div>
     </header>
 
-    <main id="feed" class="feed"></main>
+    <main id="feed" class="feed" aria-live="polite"></main>
+
     <div id="typing" class="typing hidden"></div>
 
     <footer class="composer">
-      <label class="pfp">
+      <label class="pfp" title="Upload avatar">
         <input id="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
-        <img id="avatarPreview" alt="Avatar" />
+        <img id="avatarPreview" alt="avatar" />
       </label>
-      <input id="messageInput" class="input" placeholder="Type a message…" />
-      <input id="fileInput" type="file" accept="image/*" hidden />
-      <button id="attachBtn" class="btn ghost">📎</button>
-      <button id="sendBtn" class="btn primary">Send</button>
+
+      <input id="messageInput" class="input msg-input" placeholder="Type a message…" autocomplete="off" />
+      <input id="fileInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
+      <button id="attachBtn" class="btn ghost" title="Attach image">📎</button>
+      <button id="sendBtn" class="btn primary strong" title="Send">Send</button>
     </footer>
   </div>
 
-  <!-- Settings Dialog -->
+  <!-- Settings -->
   <dialog id="settings" class="settings">
     <form method="dialog" class="settings-card">
       <header class="settings-header">
         <h2>Customize Chat</h2>
-        <button id="closeSettings" class="btn ghost" value="close">✕</button>
+        <button id="closeSettings" class="btn icon ghost" value="close" title="Close">✕</button>
       </header>
+
       <div class="settings-grid">
-        <label><span class="label-title">Display name</span><input id="nameField" class="input" maxlength="24" /></label>
-        <label><span class="label-title">Gradient A</span><input id="colorA" type="color" value="#7b61ff" /></label>
-        <label><span class="label-title">Gradient B</span><input id="colorB" type="color" value="#ad83ff" /></label>
-        <label><span class="label-title">Banner color</span><input id="bannerColor" type="color" value="#17161a" /></label>
-        <label><input id="toggleTimestamps" type="checkbox" /> Show timestamps</label>
-        <label><input id="toggleStars" type="checkbox" checked /> Star background</label>
-        <label><input id="toggleAutoScroll" type="checkbox" checked /> Auto-scroll</label>
+        <label class="field">
+          <span class="label">Display name</span>
+          <input id="nameField" class="input" maxlength="24" placeholder="Your display name" />
+        </label>
+
+        <label class="field">
+          <span class="label">Name gradient (left)</span>
+          <input id="colorA" type="color" value="#7b61ff" />
+        </label>
+
+        <label class="field">
+          <span class="label">Name gradient (right)</span>
+          <input id="colorB" type="color" value="#ad83ff" />
+        </label>
+
+        <label class="field">
+          <span class="label">Banner color</span>
+          <input id="bannerColor" type="color" value="#17161a" />
+        </label>
+
+        <div class="qol">
+          <label><input id="toggleTimestamps" type="checkbox" /> Show timestamps</label>
+          <label><input id="toggleStars" type="checkbox" checked /> Star background</label>
+          <label><input id="toggleAutoScroll" type="checkbox" checked /> Auto-scroll</label>
+        </div>
+
         <div class="actions bottom">
           <button id="saveSettings" class="btn primary">Save</button>
           <button id="clearChat" class="btn ghost" type="button">Clear chat</button>
@@ -92,6 +120,6 @@
   </dialog>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=3"></script>
 </body>
 </html>
