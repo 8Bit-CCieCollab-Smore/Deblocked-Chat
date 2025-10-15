@@ -1,6 +1,6 @@
 {
   "name": "deblocked-chat-ultra",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Deblocked Chat Ultra — fast, persistent, gradient-driven, starfield, multi-user chat built with Express, Socket.io, and SQLite.",
   "main": "server.cjs",
   "type": "commonjs",
@@ -14,7 +14,10 @@
     "sqlite3": "^5.1.6",
     "cors": "^2.8.5",
     "body-parser": "^1.20.2",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "helmet": "^7.1.0",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"
