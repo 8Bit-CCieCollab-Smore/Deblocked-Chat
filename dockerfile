@@ -8,11 +8,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
-# Copy rest of the app
+# Copy the rest of the app
 COPY . .
 
-# Expose Fly’s default port
+# Expose Fly/Railway port
 EXPOSE 8080
 
-# Start server
-CMD ["node", "server.js"]
+# Start the server (CommonJS fix)
+CMD ["node", "server.cjs"]
