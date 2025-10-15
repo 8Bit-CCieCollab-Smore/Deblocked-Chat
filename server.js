@@ -12,7 +12,8 @@ const { v4: uuidv4 } = require("uuid");
 const cors = require("cors");
 
 // ---- Config ----------------------------------------------------------------
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
+
 const MAX_UPLOAD_MB = 10;
 const ALLOWED_MIME = new Set([
   "image/png",
