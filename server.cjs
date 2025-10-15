@@ -107,7 +107,23 @@ const upload = multer({
 const app = express();
 
 // Security & basics
-app.use(helmet({
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'"],
+        "img-src": ["'self'", "data:", "blob:"],
+        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        "connect-src": ["'self'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "frame-ancestors": ["*"], // ✅ allows embedding anywhere
+      },
+    },
+    crossOriginEmbedderPolicy: false, // ✅ prevents blocking iframes
+  })
+);
+
   contentSecurityPolicy: false, // keep simple for sockets & inline previews; tighten if you want
 }));
 app.use(cors({ origin: true, credentials: true }));
