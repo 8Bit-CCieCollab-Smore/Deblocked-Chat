@@ -1,498 +1,335 @@
-const API_URL = "https://deblocked-chat-production.up.railway.app";
+// public/app.js
+// Frontend for Deblocked Chat V3 — fast, minimal, everything localStorage-configurable.
 
-let username = localStorage.getItem("username") || null;
-let currentRoom = localStorage.getItem("currentRoom") || "global";
-let conversations = JSON.parse(localStorage.getItem("conversations") || "{}");
-let avatar = localStorage.getItem("avatar") || null;
+const socket = io({ transports: ["websocket"] });
 
-// Helper
-function $(id) { return document.getElementById(id); }
+const qs = (s) => document.querySelector(s);
+const feed = qs("#feed");
+const typingEl = qs("#typing");
+const onlineEl = qs("#onlineCount");
+const bannerEl = qs("#banner");
 
-// Elements
-const welcomeScreen = $("welcome-screen");
-const chatLayout = $("chat-layout");
-const usernameInput = $("usernameInput");
-const createAccountBtn = $("createAccountBtn");
-const currentUser = $("currentUser");
-const currentUserPfp = $("currentUserPfp");
-const sendBtn = $("sendBtn");
-const messageInput = $("message");
-const chat = $("chat");
-const newChatBtn = $("newChatBtn");
-const modal = $("modal");
-const newChatUser = $("newChatUser");
-const startChatBtn = $("startChatBtn");
-const closeModalBtn = $("closeModalBtn");
-const errorPopup = $("errorPopup");
-const errorMsg = $("errorMsg");
-const closeErrorBtn = $("closeErrorBtn");
-const conversationsList = $("conversations");
-const chatHeader = $("chatHeader");
-const fileInput = $("fileInput");
-const attachBtn = $("attachBtn");
-const settingsBtn = $("settingsBtn");
-const settingsOverlay = $("settingsOverlay");
-const closeSettingsBtn = $("closeSettingsBtn");
-const logoutBtn = $("logoutBtn");
-const setPfpBtn = $("setPfpBtn");
-const pfpUpload = $("pfpUpload");
+const messageInput = qs("#messageInput");
+const sendBtn = qs("#sendBtn");
+const attachBtn = qs("#attachBtn");
+const fileInput = qs("#fileInput");
 
-// --- INIT ---
-window.onload = async () => {
-  try {
-    // Core UI hooks (guard every optional piece)
-    if (createAccountBtn) createAccountBtn.onclick = createAccount;
-    if (sendBtn) sendBtn.onclick = sendMessage;
-    if (attachBtn && fileInput) attachBtn.onclick = () => fileInput.click();
+const settingsBtn = qs("#settingsBtn");
+const settingsDlg = qs("#settings");
+const nameField = qs("#nameField");
+const colorA = qs("#colorA");
+const colorB = qs("#colorB");
+const themeSelect = qs("#themeSelect");
+const bannerColor = qs("#bannerColor");
+const saveSettings = qs("#saveSettings");
 
-    if (messageInput) {
-      messageInput.addEventListener("keydown", e => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-        }
-      });
-    }
+const avatarInput = qs("#avatarInput");
+const avatarPreview = qs("#avatarPreview");
 
-    if (newChatBtn) newChatBtn.onclick = () => modal?.classList.remove("hidden");
-    if (closeModalBtn) closeModalBtn.onclick = () => modal?.classList.add("hidden");
-    if (startChatBtn) startChatBtn.onclick = startChat;
-    if (closeErrorBtn) closeErrorBtn.onclick = () => errorPopup?.classList.add("hidden");
-
-    // Settings
-    if (settingsBtn) settingsBtn.onclick = () => settingsOverlay?.classList.remove("hidden");
-    if (closeSettingsBtn) closeSettingsBtn.onclick = () => settingsOverlay?.classList.add("hidden");
-    if (logoutBtn) logoutBtn.onclick = signOut;
-    if (setPfpBtn) setPfpBtn.onclick = () => pfpUpload?.click();
-
-    // PFP upload + blurred banner (CSS var --user-banner)
-    if (pfpUpload) {
-      pfpUpload.addEventListener("change", e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-          avatar = ev.target.result;
-          localStorage.setItem("avatar", avatar);
-
-          if (currentUserPfp) {
-            currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
-          }
-          const userFooter = document.getElementById("userFooter");
-          if (userFooter) {
-            userFooter.style.setProperty("--user-banner", `url("${avatar}")`);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-
-    // Restore session UI
-    if (username) {
-      welcomeScreen?.classList.add("hidden");
-      chatLayout?.classList.remove("hidden");
-
-      if (currentUser) currentUser.innerText = username;
-      if (currentUserPfp) {
-        if (avatar) currentUserPfp.innerHTML = `<img src="${avatar}" alt="pfp">`;
-        else currentUserPfp.innerText = username[0].toUpperCase();
-      }
-
-      await loadUserRooms();
-      startPresence();
-
-      // ensure banner shows on reload
-      if (avatar) {
-        const userFooter = document.getElementById("userFooter");
-        if (userFooter) {
-          userFooter.style.setProperty("--user-banner", `url("${avatar}")`);
-        }
-      }
-    }
-
-    loadConversations();
-    loadMessages();
-
-    // Polling loops
-    setInterval(loadMessages, 2000);
-    setInterval(updateOnlineCount, 10000);
-    setInterval(loadUserRooms, 5000);
-  } catch (err) {
-    console.error("Startup failed:", err);
-  }
+// ----- State ---------------------------------------------------------------
+let me = {
+  name: localStorage.getItem("name") || "Guest",
+  colorA: localStorage.getItem("colorA") || "#8a8a8f",
+  colorB: localStorage.getItem("colorB") || "#bbbbc2",
+  banner: localStorage.getItem("banner") || "#2b2b2f",
+  theme: localStorage.getItem("theme") || "gray",
+  avatar: localStorage.getItem("avatar") || "",
 };
 
-// --- ACCOUNT ---
-function createAccount() {
-  if (!usernameInput) return;
-  const input = usernameInput.value.trim();
-  if (!input) return;
-  username = input;
-  localStorage.setItem("username", username);
-  location.reload();
+// Apply persisted theme immediately to avoid FOUC
+applyTheme(me.theme);
+applyNameGradient(me.colorA, me.colorB);
+applyBanner(me.banner);
+if (me.avatar) avatarPreview.src = me.avatar;
+
+// ----- Helpers -------------------------------------------------------------
+function applyNameGradient(a, b) {
+  document.documentElement.style.setProperty("--name-a", a);
+  document.documentElement.style.setProperty("--name-b", b);
+}
+function applyBanner(hex) { document.documentElement.style.setProperty("--banner", hex); }
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.classList.remove("theme-violet", "theme-ocean", "theme-emerald", "theme-sunset", "theme-void");
+  if (theme === "violet") root.classList.add("theme-violet");
+  else if (theme === "ocean") root.classList.add("theme-ocean");
+  else if (theme === "emerald") root.classList.add("theme-emerald");
+  else if (theme === "sunset") root.classList.add("theme-sunset");
+  else if (theme === "void") root.classList.add("theme-void");
+  // gray = base (no class)
+}
+function timeShort(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+function scrollToBottom() {
+  // Only autoscroll if near bottom to not disturb reading older messages
+  const nearBottom = feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 100;
+  if (nearBottom) feed.scrollTop = feed.scrollHeight;
 }
 
-function signOut() {
-  if (username) {
-    try {
-      const data = new Blob([JSON.stringify({ user: username })], { type: "application/json" });
-      navigator.sendBeacon?.(`${API_URL}/api/online/leave`, data);
-    } catch {}
+// ----- Rendering -----------------------------------------------------------
+function renderSystem(text, ts = Date.now()) {
+  const div = document.createElement("div");
+  div.className = "system";
+  div.textContent = `${text} • ${timeShort(ts)}`;
+  feed.appendChild(div);
+  scrollToBottom();
+}
+
+function renderMessage(msg) {
+  if (msg.system) return renderSystem(msg.text, msg.createdAt);
+
+  const mine = msg.user && msg.user.id === socket.id;
+
+  const wrap = document.createElement("div");
+  wrap.className = `msg ${mine ? "me" : ""}`;
+
+  const avatar = document.createElement("img");
+  avatar.className = "avatar";
+  avatar.src = msg.user?.avatar || "";
+  avatar.alt = msg.user?.name || "user";
+  wrap.appendChild(avatar);
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+
+  const tag = document.createElement("span");
+  tag.className = "name-tag";
+  tag.style.background = `linear-gradient(135deg, ${msg.user.color}, var(--name-b))`; // color is left stop
+  const dot = document.createElement("span");
+  dot.className = "pill";
+  const name = document.createElement("span");
+  name.textContent = msg.user.name;
+  tag.appendChild(dot);
+  tag.appendChild(name);
+
+  const time = document.createElement("span");
+  time.className = "time";
+  time.textContent = timeShort(msg.createdAt);
+
+  meta.appendChild(tag);
+  meta.appendChild(time);
+
+  const text = document.createElement("div");
+  text.className = "text";
+  text.textContent = msg.text || "";
+
+  bubble.appendChild(meta);
+  if (msg.text) bubble.appendChild(text);
+
+  if (msg.attachment?.url) {
+    const at = document.createElement("div");
+    at.className = "attachment";
+    const img = document.createElement("img");
+    img.src = msg.attachment.url;
+    img.alt = "attachment";
+    at.appendChild(img);
+    bubble.appendChild(at);
   }
-  localStorage.clear();
-  username = null;
-  conversations = {};
-  avatar = null;
-  chatLayout?.classList.add("hidden");
-  welcomeScreen?.classList.remove("hidden");
+
+  wrap.appendChild(bubble);
+  feed.appendChild(wrap);
+  scrollToBottom();
 }
 
-// --- MESSAGES ---
-async function getCurrentMessages() {
-  try {
-    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`).catch(() => null);
-    if (!res?.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
+// ----- Socket events -------------------------------------------------------
+socket.on("connect", () => {
+  // initial join
+  socket.emit(
+    "join",
+    {
+      name: me.name,
+      color: me.colorA, // left gradient stop personalized to user
+      banner: me.banner,
+      avatar: me.avatar,
+    },
+    (res) => {
+      if (!res?.ok) return;
+      onlineEl.textContent = `${res.online?.length || 1} online`;
+      renderSystem("Connected");
+    }
+  );
+});
+
+socket.on("message:new", (msg) => renderMessage(msg));
+
+socket.on("presence:user-joined", ({ user }) => {
+  // Update count (server also sends "message:new" system)
+  onlineEl.textContent = `${Math.max(1, parseInt(onlineEl.textContent) || 1) + 1} online`;
+});
+
+socket.on("presence:user-left", ({ userId }) => {
+  onlineEl.textContent = `${Math.max(0, (parseInt(onlineEl.textContent) || 1) - 1)} online`;
+});
+
+let typingTimer;
+const whoTyping = new Set();
+socket.on("presence:typing", ({ userId, name, isTyping }) => {
+  if (userId === socket.id) return;
+  if (isTyping) whoTyping.add(name);
+  else whoTyping.delete(name);
+
+  if (whoTyping.size > 0) {
+    typingEl.textContent = `${Array.from(whoTyping).slice(0,3).join(", ")} ${whoTyping.size>1?"are":"is"} typing…`;
+    typingEl.classList.remove("hidden");
+  } else typingEl.classList.add("hidden");
+});
+
+socket.on("presence:user-updated", ({ user }) => {
+  // If it's me, nothing to do; others will take effect on their next messages
+});
+
+// ----- Input logic ---------------------------------------------------------
+let typingSent = false;
+messageInput.addEventListener("input", () => {
+  if (!typingSent) {
+    typingSent = true;
+    socket.emit("presence:typing", true);
   }
-}
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => {
+    typingSent = false;
+    socket.emit("presence:typing", false);
+  }, 900);
+});
 
-async function loadMessages() {
-  if (!username) return;
-  try {
-    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`).catch(() => null);
-    if (!res?.ok) throw new Error("Failed to load messages");
-    const data = await res.json();
-    renderMessages(data);
-  } catch (e) {
-    console.error(e);
+sendBtn.addEventListener("click", sendMessage);
+messageInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
   }
+});
+
+function sendMessage(attachment = null) {
+  const text = messageInput.value.trim();
+  if (!text && !attachment) return;
+
+  socket.emit("message:send", { text, attachment }, (res) => {
+    if (res?.ok) {
+      messageInput.value = "";
+      socket.emit("presence:typing", false);
+    }
+  });
 }
 
-function renderMessages(msgs) {
-  if (!chat) return;
-  const nearBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
-  chat.innerHTML = "";
+// ----- File uploads --------------------------------------------------------
+attachBtn.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", async () => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
 
-  // Empty state
-  if (!msgs || msgs.length === 0) {
-    const emptyNotice = document.createElement("div");
-    emptyNotice.innerText = "No messages sent yet";
-    emptyNotice.style.textAlign = "center";
-    emptyNotice.style.opacity = "0.75";
-    emptyNotice.style.marginTop = "16px";
-    emptyNotice.style.fontSize = "14px";
-    chat.appendChild(emptyNotice);
+  // Client-side validation
+  if (!/^image\/(png|jpeg|gif|webp)$/.test(file.type)) {
+    renderSystem("Unsupported file type");
+    fileInput.value = "";
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    renderSystem("File too large (max 10MB)");
+    fileInput.value = "";
     return;
   }
 
-  msgs.forEach(m => {
-    const div = document.createElement("div");
-    div.className = "msg " + (m.user === username ? "self" : "other");
-
-    const pfp = document.createElement("div");
-    pfp.className = "pfp";
-    if (m.avatar) pfp.innerHTML = `<img src="${m.avatar}" alt="pfp">`;
-    else pfp.innerText = m.user[0]?.toUpperCase() || "?";
-
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-
-    const meta = document.createElement("div");
-    meta.className = "meta" + (m.user === username ? " self-user" : "");
-    const time = new Date(m.timestamp || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    meta.innerHTML = `<span><b>${m.user}</b></span><span>${time}</span>`;
-
-    const text = document.createElement("div");
-    text.innerText = m.text || "";
-
-    bubble.appendChild(meta);
-    if (m.text) bubble.appendChild(text);
-
-    if (m.file) {
-      const fileEl = document.createElement("div");
-      fileEl.style.marginTop = "6px";
-      if (m.file.startsWith("data:image")) {
-        const img = document.createElement("img");
-        img.src = m.file;
-        img.style.maxWidth = "200px";
-        img.style.borderRadius = "8px";
-        fileEl.appendChild(img);
-      } else {
-        const a = document.createElement("a");
-        a.href = m.file;
-        a.download = m.fileName || "file";
-        a.innerText = m.fileName || "Download File";
-        fileEl.appendChild(a);
-      }
-      bubble.appendChild(fileEl);
-    }
-
-    if (m.sending) {
-      const sendingEl = document.createElement("div");
-      sendingEl.style.fontSize = "11px";
-      sendingEl.style.opacity = "0.8";
-      sendingEl.innerText = "sending...";
-      bubble.appendChild(sendingEl);
-    }
-
-    if (m.user === username) {
-      div.appendChild(bubble);
-      div.appendChild(pfp);
-    } else {
-      div.appendChild(pfp);
-      div.appendChild(bubble);
-    }
-
-    chat.appendChild(div);
-  });
-
-  if (nearBottom) chat.scrollTop = chat.scrollHeight;
-}
-
-async function sendMessage() {
-  if (!messageInput) return;
-  const text = messageInput.value.trim();
-  const file = fileInput?.files[0];
-  if (!text && !file) return;
-
-  // instant placeholder
-  const tempMsg = { user: username, text, avatar, timestamp: Date.now(), sending: true };
-  const currentMsgs = await getCurrentMessages();
-  renderMessages([...currentMsgs, tempMsg]);
-
-  let payload = { user: username, text, avatar, timestamp: Date.now() };
-
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = async e => {
-      payload.file = e.target.result;
-      payload.fileName = file.name;
-      await sendPayload(payload);
-      messageInput.value = "";
-      if (fileInput) fileInput.value = "";
-    };
-    reader.readAsDataURL(file);
-  } else {
-    await sendPayload(payload);
-    messageInput.value = "";
-  }
-}
-
-async function sendPayload(payload) {
   try {
-    const res = await fetch(`${API_URL}/api/messages/${currentRoom}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    }).catch(() => null);
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/upload", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Upload failed");
 
-    if (res?.ok) {
-      loadMessages();
-      updateConversationPreview(currentRoom, payload.text || payload.fileName || "[File]");
-    } else {
-      console.error("Failed to send message");
-    }
+    sendMessage({ url: data.url });
   } catch (e) {
-    console.error("Error sending message", e);
+    renderSystem(`Upload error: ${e.message}`);
+  } finally {
+    fileInput.value = "";
   }
-}
-
-// --- DM / Conversations ---
-async function startChat() {
-  if (!newChatUser) return;
-  const user = newChatUser.value.trim();
-  if (!user) return;
-  if (user === username) { showError("You can’t DM yourself!"); return; }
-
-  try {
-    const res = await fetch(`${API_URL}/api/checkUser/${user}`).catch(() => null);
-    if (!res?.ok) { showError("User does not exist"); return; }
-
-    const create = await fetch(`${API_URL}/api/dm/create`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ users: [username, user] })
-    });
-    const { roomId } = await create.json();
-
-    // Try to get their avatar from existing messages
-    let avatarUrl = null;
-    try {
-      const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`).catch(() => null);
-      if (msgRes?.ok) {
-        const msgs = await msgRes.json();
-        const theirs = msgs.find(m => m.user === user && m.avatar);
-        if (theirs) avatarUrl = theirs.avatar;
-      }
-    } catch {}
-
-    conversations[roomId] = { name: user, preview: "", avatar: avatarUrl };
-    saveConversations();
-    loadConversations();
-    switchRoom(roomId);
-    modal?.classList.add("hidden");
-  } catch {
-    showError("Server error");
-  }
-}
-
-async function loadUserRooms() {
-  if (!username) return;
-  try {
-    const res = await fetch(`${API_URL}/api/userRooms/${username}`).catch(() => null);
-    if (!res?.ok) return;
-    const { rooms } = await res.json();
-
-    for (const roomId of rooms) {
-      let otherName = "Unknown";
-      if (roomId.startsWith("dm-")) {
-        const parts = roomId.split("-").slice(1);
-        otherName = parts.find(n => n !== username) || "Unknown";
-      }
-
-      let avatarUrl = null;
-      try {
-        const msgRes = await fetch(`${API_URL}/api/messages/${roomId}`).catch(() => null);
-        if (msgRes?.ok) {
-          const msgs = await msgRes.json();
-          const lastMsgFromThem = [...msgs].reverse().find(m => m.user === otherName && m.avatar);
-          if (lastMsgFromThem) avatarUrl = lastMsgFromThem.avatar;
-        }
-      } catch {}
-
-      if (!conversations[roomId]) {
-        conversations[roomId] = { name: otherName, preview: "", avatar: avatarUrl };
-      } else if (!conversations[roomId].avatar && avatarUrl) {
-        conversations[roomId].avatar = avatarUrl;
-      }
-    }
-
-    saveConversations();
-    loadConversations();
-  } catch (e) {
-    console.error("Failed to load user rooms", e);
-  }
-}
-
-function loadConversations() {
-  if (!conversationsList) return;
-  conversationsList.innerHTML = "";
-
-  // Global
-  const global = document.createElement("div");
-  global.className = "conversation global";
-  global.innerHTML = `
-    <div class="pfp">🌍</div>
-    <div>
-      <b class="title">Global Chat</b>
-      <div class="preview">${conversations["global"]?.preview || ""}</div>
-    </div>
-  `;
-  global.onclick = () => switchRoom("global");
-  conversationsList.appendChild(global);
-
-  // DMs
- Object.keys(conversations).forEach(room => {
-  if (room === "global") return;
-  const conv = conversations[room];
-  const avatarHTML = conv.avatar
-    ? `<img src="${conv.avatar}" alt="pfp">`
-    : `<span>${conv.name[0]?.toUpperCase() || "?"}</span>`;
-
-  const div = document.createElement("div");
-  div.className = "conversation";
-  div.innerHTML = `
-    <div class="pfp">${avatarHTML}</div>
-    <div>
-      <b>${conv.name}</b>
-      <div class="preview">${conv.preview || ""}</div>
-    </div>
-    <span class="badge"></span>
-  `;
-
-  // 🟦 Apply blurred banner from avatar
-  if (conv.avatar) {
-    div.style.setProperty("--conv-banner", `url("${conv.avatar}")`);
-  }
-
-  div.onclick = () => switchRoom(room);
-  conversationsList.appendChild(div);
 });
 
+// ----- Settings ------------------------------------------------------------
+settingsBtn.addEventListener("click", () => {
+  // preload fields
+  nameField.value = me.name;
+  colorA.value = me.colorA;
+  colorB.value = me.colorB;
+  bannerColor.value = me.banner;
+  themeSelect.value = me.theme;
+  settingsDlg.showModal();
+});
 
-  updateOnlineCount();
-}
+saveSettings.addEventListener("click", (e) => {
+  e.preventDefault();
 
-function switchRoom(room) {
-  currentRoom = room;
-  localStorage.setItem("currentRoom", room);
-  if (chatHeader) {
-    chatHeader.innerText = room === "global"
-      ? "Global Chat"
-      : `Chat with ${conversations[room]?.name || room}`;
+  const next = {
+    name: nameField.value.trim() || "Guest",
+    colorA: colorA.value,
+    colorB: colorB.value,
+    banner: bannerColor.value,
+    theme: themeSelect.value,
+  };
+
+  // Apply locally
+  me = { ...me, ...next };
+  localStorage.setItem("name", me.name);
+  localStorage.setItem("colorA", me.colorA);
+  localStorage.setItem("colorB", me.colorB);
+  localStorage.setItem("banner", me.banner);
+  localStorage.setItem("theme", me.theme);
+
+  applyNameGradient(me.colorA, me.colorB);
+  applyBanner(me.banner);
+  applyTheme(me.theme);
+
+  // Broadcast core identity bits
+  socket.emit(
+    "settings:update",
+    { name: me.name, color: me.colorA, banner: me.banner, avatar: me.avatar },
+    () => {}
+  );
+
+  settingsDlg.close();
+});
+
+// Avatar upload (local preview + store dataURL; optional: send via /upload as well)
+avatarInput.addEventListener("change", async () => {
+  const file = avatarInput.files?.[0];
+  if (!file) return;
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type) || file.size > 5 * 1024 * 1024) {
+    renderSystem("Avatar must be PNG/JPEG/WEBP up to 5MB");
+    avatarInput.value = "";
+    return;
   }
-  loadMessages();
-  if (room === "global") updateOnlineCount();
-}
 
-function updateConversationPreview(room, text) {
-  if (!conversations[room]) conversations[room] = { name: room, preview: text };
-  else conversations[room].preview = text;
-  saveConversations();
-  loadConversations();
-}
-
-function saveConversations() {
-  localStorage.setItem("conversations", JSON.stringify(conversations));
-}
-
-// --- Errors ---
-function showError(msg) {
-  if (!errorPopup || !errorMsg) return;
-  errorMsg.innerText = msg;
-  errorPopup.classList.remove("hidden");
-}
-
-// --- Online presence ---
-async function updateOnlineCount() {
+  // Upload to server to avoid massive data URLs in localStorage
+  const form = new FormData();
+  form.append("file", file);
   try {
-    const res = await fetch(`${API_URL}/api/online`).catch(() => null);
-    if (!res?.ok) return;
-    const { count } = await res.json();
+    const res = await fetch("/upload", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Upload failed");
+    me.avatar = data.url;
+    localStorage.setItem("avatar", me.avatar);
+    avatarPreview.src = me.avatar;
 
-    const globalTab = document.querySelector("#conversations .conversation.global");
-    if (globalTab) {
-      const titleEl = globalTab.querySelector(".title");
-      if (titleEl) titleEl.innerText = `Global Chat - ${count} Online`;
-    }
+    socket.emit("settings:update", { avatar: me.avatar }, () => {});
   } catch (e) {
-    console.error("Error updating online count", e);
+    renderSystem(`Avatar upload error: ${e.message}`);
+  } finally {
+    avatarInput.value = "";
   }
-}
+});
 
-function startPresence() {
-  pingOnline();
-  setInterval(pingOnline, 15000);
-  window.addEventListener("beforeunload", () => {
-    try {
-      const data = new Blob([JSON.stringify({ user: username })], { type: "application/json" });
-      navigator.sendBeacon?.(`${API_URL}/api/online/leave`, data);
-    } catch {}
-  });
-}
-
-async function pingOnline() {
-  if (!username) return;
-  try {
-    await fetch(`${API_URL}/api/online/ping`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user: username }),
-      keepalive: true
-    });
-  } catch (e) {
-    console.error("Presence ping failed", e);
-  }
+// Initialize avatar preview (placeholder if none)
+if (!avatarPreview.src) {
+  // simple placeholder gradient
+  const svg =
+    `data:image/svg+xml;utf8,` +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#444"/><stop offset="1" stop-color="#222"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/></svg>`
+    );
+  avatarPreview.src = svg;
 }
