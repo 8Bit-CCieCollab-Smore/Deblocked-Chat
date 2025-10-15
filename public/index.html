@@ -2,28 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Deblocked Chat V3 — Ultra</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Deblocked Chat V3</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <canvas id="stars" aria-hidden="true"></canvas>
 
+  <!-- intro overlay -->
+  <div id="intro" class="intro">
+    <div class="intro-card">
+      <h1>Welcome to Deblocked Chat</h1>
+      <p class="muted">Set your display name and jump in — avatars sync across devices.</p>
+      <input id="introName" class="input" maxlength="24" placeholder="Pick a display name" />
+      <div class="row">
+        <input id="introAvatar" type="file" accept="image/png,image/jpeg,image/webp" />
+      </div>
+      <div class="actions">
+        <button id="introStart" class="btn primary">Start chatting</button>
+      </div>
+      <p class="small muted">You can customize gradients and banner in settings later.</p>
+    </div>
+  </div>
+
   <div id="app" class="app">
-    <!-- Banner / header (customizable color) -->
     <header id="banner" class="banner">
       <div class="brand-left">
         <span class="dot" aria-hidden="true"></span>
-        <span class="title">Deblocked Chat</span>
-        <span class="beta">V3</span>
+        <span class="title">Deblocked Chat V3</span>
+        <span class="beta">Beta</span>
       </div>
 
-      <!-- online users compact list -->
       <div class="online-row">
         <div id="onlineList" class="online-list" title="Online users"></div>
-        <span id="onlineCount" class="online-count">0</span>
+        <span id="onlineCount" class="online-count">0 online</span>
       </div>
 
       <div class="right">
@@ -31,13 +43,10 @@
       </div>
     </header>
 
-    <!-- Messages -->
     <main id="feed" class="feed" aria-live="polite"></main>
 
-    <!-- Typing indicator -->
     <div id="typing" class="typing hidden"></div>
 
-    <!-- Composer -->
     <footer class="composer">
       <label class="pfp" title="Upload avatar">
         <input id="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
@@ -51,7 +60,7 @@
     </footer>
   </div>
 
-  <!-- Settings Drawer (redesigned) -->
+  <!-- settings (simple modal) -->
   <dialog id="settings" class="settings">
     <form method="dialog" class="settings-card">
       <header class="settings-header">
@@ -59,7 +68,7 @@
         <button id="closeSettings" class="btn ghost" value="close">✕</button>
       </header>
 
-      <section class="settings-grid">
+      <div class="settings-grid">
         <label>
           <span class="label-title">Display name</span>
           <input id="nameField" class="input" maxlength="24" placeholder="Your display name" />
@@ -67,41 +76,18 @@
 
         <label>
           <span class="label-title">Name gradient (left)</span>
-          <input id="colorA" type="color" value="#8a8a8f" />
+          <input id="colorA" type="color" value="#7b61ff" />
         </label>
 
         <label>
           <span class="label-title">Name gradient (right)</span>
-          <input id="colorB" type="color" value="#bbbbc2" />
+          <input id="colorB" type="color" value="#ad83ff" />
         </label>
 
         <label>
           <span class="label-title">Banner color</span>
-          <input id="bannerColor" type="color" value="#2b2b2f" />
+          <input id="bannerColor" type="color" value="#17161a" />
         </label>
-
-        <label>
-          <span class="label-title">Theme</span>
-          <select id="themeSelect" class="input">
-            <option value="gray">Gray (default)</option>
-            <option value="violet">Violet</option>
-            <option value="ocean">Ocean</option>
-            <option value="emerald">Emerald</option>
-            <option value="sunset">Sunset</option>
-            <option value="void">Void</option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-
-        <div class="preview">
-          <span class="label-title">Preview</span>
-          <div class="preview-box">
-            <div class="preview-name">
-              <div id="previewDot" class="dot small"></div>
-              <div id="previewName" class="name-tag small">YourName</div>
-            </div>
-          </div>
-        </div>
 
         <div class="qol">
           <label><input id="toggleTimestamps" type="checkbox" /> Show timestamps</label>
@@ -111,19 +97,13 @@
 
         <div class="actions bottom">
           <button id="saveSettings" class="btn primary">Save</button>
-          <button id="clearChat" class="btn ghost">Clear chat</button>
-          <button id="downloadChat" class="btn ghost">Download chat</button>
+          <button id="clearChat" class="btn ghost" type="button">Clear chat</button>
         </div>
-      </section>
-
-      <p class="hint">
-        Tip: Avatars are uploaded to the server and used across devices. Name gradients use two stops for a richer look.
-      </p>
+      </div>
     </form>
   </dialog>
 
-  <!-- Socket.IO -->
   <script src="/socket.io/socket.io.js"></script>
-  <script src="./app.js" type="module"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
