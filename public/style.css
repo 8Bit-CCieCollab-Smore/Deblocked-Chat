@@ -103,3 +103,13 @@ body.ready .intro{transition:opacity .35s ease}
   .msg{grid-template-columns:36px 1fr}
   .avatar{width:36px;height:36px;border-radius:8px}
 }
+
+/* Hide scrollbar visually (still scrollable) */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
