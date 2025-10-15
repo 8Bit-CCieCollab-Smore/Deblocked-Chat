@@ -124,8 +124,6 @@ app.use(
   })
 );
 
-  contentSecurityPolicy: false, // keep simple for sockets & inline previews; tighten if you want
-}));
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
@@ -138,10 +136,8 @@ app.use(express.static(PUBLIC_DIR, {
 }));
 
 // Serve uploaded avatars/images from the writable volume under /uploads
-// Example URL returned to clients: /uploads/<filename>
 app.use("/uploads", express.static(UPLOAD_DIR, {
   setHeaders: (res) => {
-    // uploaded files can change; don't cache aggressively
     res.setHeader("Cache-Control", "no-store");
   },
 }));
