@@ -5,21 +5,29 @@
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Deblocked Chat V3</title>
+  <title>Deblocked Chat V3 — Ultra</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
+  <canvas id="stars" aria-hidden="true"></canvas>
+
   <div id="app" class="app">
     <!-- Banner / header (customizable color) -->
     <header id="banner" class="banner">
-      <div class="brand">
-        <span class="dot"></span>
+      <div class="brand-left">
+        <span class="dot" aria-hidden="true"></span>
         <span class="title">Deblocked Chat</span>
         <span class="beta">V3</span>
       </div>
+
+      <!-- online users compact list -->
+      <div class="online-row">
+        <div id="onlineList" class="online-list" title="Online users"></div>
+        <span id="onlineCount" class="online-count">0</span>
+      </div>
+
       <div class="right">
-        <span id="onlineCount" class="online">0 online</span>
-        <button id="settingsBtn" class="btn ghost">Settings</button>
+        <button id="settingsBtn" class="btn ghost" aria-haspopup="dialog">⚙️</button>
       </div>
     </header>
 
@@ -27,11 +35,11 @@
     <main id="feed" class="feed" aria-live="polite"></main>
 
     <!-- Typing indicator -->
-    <div id="typing" class="typing hidden">Someone is typing…</div>
+    <div id="typing" class="typing hidden"></div>
 
     <!-- Composer -->
     <footer class="composer">
-      <label class="pfp">
+      <label class="pfp" title="Upload avatar">
         <input id="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
         <img id="avatarPreview" alt="avatar" />
       </label>
@@ -43,47 +51,73 @@
     </footer>
   </div>
 
-  <!-- Settings Drawer -->
+  <!-- Settings Drawer (redesigned) -->
   <dialog id="settings" class="settings">
     <form method="dialog" class="settings-card">
-      <h2>Customize</h2>
+      <header class="settings-header">
+        <h2>Customize Chat</h2>
+        <button id="closeSettings" class="btn ghost" value="close">✕</button>
+      </header>
 
-      <label class="row">
-        <span>Display name</span>
-        <input id="nameField" class="input" maxlength="24" placeholder="Your name" />
-      </label>
+      <section class="settings-grid">
+        <label>
+          <span class="label-title">Display name</span>
+          <input id="nameField" class="input" maxlength="24" placeholder="Your display name" />
+        </label>
 
-      <label class="row">
-        <span>Name tag gradient</span>
-        <input id="colorA" type="color" value="#8a8a8f" />
-        <input id="colorB" type="color" value="#bbbbc2" />
-      </label>
+        <label>
+          <span class="label-title">Name gradient (left)</span>
+          <input id="colorA" type="color" value="#8a8a8f" />
+        </label>
 
-      <label class="row">
-        <span>Banner color</span>
-        <input id="bannerColor" type="color" value="#2b2b2f" />
-      </label>
+        <label>
+          <span class="label-title">Name gradient (right)</span>
+          <input id="colorB" type="color" value="#bbbbc2" />
+        </label>
 
-      <label class="row">
-        <span>Theme</span>
-        <select id="themeSelect" class="input">
-          <option value="gray">Gray (default)</option>
-          <option value="violet">Violet</option>
-          <option value="ocean">Ocean</option>
-          <option value="emerald">Emerald</option>
-          <option value="sunset">Sunset</option>
-          <option value="void">Void</option>
-          <option value="custom">Custom (use your colors)</option>
-        </select>
-      </label>
+        <label>
+          <span class="label-title">Banner color</span>
+          <input id="bannerColor" type="color" value="#2b2b2f" />
+        </label>
 
-      <div class="actions">
-        <button id="saveSettings" class="btn primary">Save</button>
-        <button value="cancel" class="btn ghost">Close</button>
-      </div>
+        <label>
+          <span class="label-title">Theme</span>
+          <select id="themeSelect" class="input">
+            <option value="gray">Gray (default)</option>
+            <option value="violet">Violet</option>
+            <option value="ocean">Ocean</option>
+            <option value="emerald">Emerald</option>
+            <option value="sunset">Sunset</option>
+            <option value="void">Void</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+
+        <div class="preview">
+          <span class="label-title">Preview</span>
+          <div class="preview-box">
+            <div class="preview-name">
+              <div id="previewDot" class="dot small"></div>
+              <div id="previewName" class="name-tag small">YourName</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="qol">
+          <label><input id="toggleTimestamps" type="checkbox" /> Show timestamps</label>
+          <label><input id="toggleStars" type="checkbox" checked /> Star background</label>
+          <label><input id="toggleAutoScroll" type="checkbox" checked /> Auto-scroll</label>
+        </div>
+
+        <div class="actions bottom">
+          <button id="saveSettings" class="btn primary">Save</button>
+          <button id="clearChat" class="btn ghost">Clear chat</button>
+          <button id="downloadChat" class="btn ghost">Download chat</button>
+        </div>
+      </section>
 
       <p class="hint">
-        Tip: avatars update instantly; name & colors broadcast to everyone.
+        Tip: Avatars are uploaded to the server and used across devices. Name gradients use two stops for a richer look.
       </p>
     </form>
   </dialog>
