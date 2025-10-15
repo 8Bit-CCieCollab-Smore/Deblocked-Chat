@@ -1,120 +1,95 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Deblocked Chat</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Deblocked Chat V3</title>
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <!-- Welcome screen -->
-  <div id="welcome-screen" class="center-screen">
-    <div class="card">
-      <h2>👤 Welcome!</h2>
-      <p>Create your account to start chatting</p>
-      <input type="text" id="usernameInput" placeholder="Enter your username" />
-      <button id="createAccountBtn" class="rainbow-btn">
-        <span>Create</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Chat layout -->
-  <div id="chat-layout" class="hidden">
-    <!-- Sidebar -->
-    <aside id="sidebar">
-      <header>
-        <h3>Messages</h3>
-        <button id="newChatBtn" class="rainbow-btn">+</button>
-      </header>
-      <div id="conversations"></div>
-
-      <div id="userFooter">
-        <div id="currentUserPfp">?</div>
-        <div>
-          <b id="currentUser">User</b>
-          <div class="status">Online</div>
-        </div>
-        <!-- ⚙️ Settings button -->
-        <button id="settingsBtn" class="icon-btn">
-          <img src="https://cdn-icons-png.flaticon.com/128/3524/3524636.png" alt="settings" class="icon-img"/>
-        </button>
+  <div id="app" class="app">
+    <!-- Banner / header (customizable color) -->
+    <header id="banner" class="banner">
+      <div class="brand">
+        <span class="dot"></span>
+        <span class="title">Deblocked Chat</span>
+        <span class="beta">V3</span>
       </div>
-    </aside>
-
-    <!-- Chat area -->
-    <main id="chat-area">
-      <div id="chatHeader">Global Chat</div>
-      <div id="chat"></div>
-      <div id="inputBar">
-        <input type="text" id="message" placeholder="Type a message..." />
-        <input type="file" id="fileInput" accept="image/*,.pdf,.txt" style="display:none;" />
-        <button id="attachBtn" title="Attach File" class="icon-btn">
-          <img src="https://cdn-icons-png.flaticon.com/128/13727/13727342.png" alt="attach" class="icon-img"/>
-        </button>
-        <button id="sendBtn">
-          <img src="https://cdn-icons-png.flaticon.com/128/1933/1933005.png" alt="send" class="send-icon"/>
-        </button>
+      <div class="right">
+        <span id="onlineCount" class="online">0 online</span>
+        <button id="settingsBtn" class="btn ghost">Settings</button>
       </div>
-    </main>
-  </div>
-
-  <!-- New Chat Modal -->
-  <div id="modal" class="hidden">
-    <div class="modal-content">
-      <h3>Start New Chat</h3>
-      <input type="text" id="newChatUser" placeholder="Enter username..." />
-      <div>
-        <button id="startChatBtn">Start Chat</button>
-        <button id="closeModalBtn">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Error Popup -->
-  <div id="errorPopup" class="hidden">
-    <div class="error-card">
-      <p id="errorMsg">Error</p>
-      <button id="closeErrorBtn">OK</button>
-    </div>
-  </div>
-
-<!-- Settings Overlay -->
-<div id="settingsOverlay" class="hidden overlay">
-  <div class="settings-card">
-    <header class="settings-header">
-      <h3>⚙️ Settings</h3>
-      <button id="closeSettingsBtn" class="close-btn">✕</button>
     </header>
 
-    <div class="settings-content">
-      <input type="file" id="pfpUpload" accept="image/*" hidden>
-      <button id="setPfpBtn" class="ui-btn blue">Set Profile Picture</button>
-      <button id="logoutBtn" class="ui-btn red">Logout</button>
-    </div>
+    <!-- Messages -->
+    <main id="feed" class="feed" aria-live="polite"></main>
+
+    <!-- Typing indicator -->
+    <div id="typing" class="typing hidden">Someone is typing…</div>
+
+    <!-- Composer -->
+    <footer class="composer">
+      <label class="pfp">
+        <input id="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+        <img id="avatarPreview" alt="avatar" />
+      </label>
+
+      <input id="messageInput" class="input" placeholder="Type a message…" autocomplete="off" />
+      <input id="fileInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
+      <button id="attachBtn" class="btn ghost" title="Attach image">📎</button>
+      <button id="sendBtn" class="btn primary" title="Send">Send</button>
+    </footer>
   </div>
-</div>
 
+  <!-- Settings Drawer -->
+  <dialog id="settings" class="settings">
+    <form method="dialog" class="settings-card">
+      <h2>Customize</h2>
 
+      <label class="row">
+        <span>Display name</span>
+        <input id="nameField" class="input" maxlength="24" placeholder="Your name" />
+      </label>
 
-  <!-- Scripts -->
-  <script src="app.js"></script>
-  <script>
-    // File attach
-    const attachBtn = document.getElementById("attachBtn");
-    attachBtn.addEventListener("click", () => fileInput.click());
+      <label class="row">
+        <span>Name tag gradient</span>
+        <input id="colorA" type="color" value="#8a8a8f" />
+        <input id="colorB" type="color" value="#bbbbc2" />
+      </label>
 
-    // Settings overlay toggle
-    const settingsBtn = document.getElementById("settingsBtn");
-    const settingsOverlay = document.getElementById("settingsOverlay");
-    const closeSettingsBtn = document.getElementById("closeSettingsBtn");
-    const setPfpBtn = document.getElementById("setPfpBtn");
-    const pfpUpload = document.getElementById("pfpUpload");
+      <label class="row">
+        <span>Banner color</span>
+        <input id="bannerColor" type="color" value="#2b2b2f" />
+      </label>
 
-    settingsBtn.addEventListener("click", () => settingsOverlay.classList.remove("hidden"));
-    closeSettingsBtn.addEventListener("click", () => settingsOverlay.classList.add("hidden"));
-    setPfpBtn.addEventListener("click", () => pfpUpload.click());
-  </script>
+      <label class="row">
+        <span>Theme</span>
+        <select id="themeSelect" class="input">
+          <option value="gray">Gray (default)</option>
+          <option value="violet">Violet</option>
+          <option value="ocean">Ocean</option>
+          <option value="emerald">Emerald</option>
+          <option value="sunset">Sunset</option>
+          <option value="void">Void</option>
+          <option value="custom">Custom (use your colors)</option>
+        </select>
+      </label>
+
+      <div class="actions">
+        <button id="saveSettings" class="btn primary">Save</button>
+        <button value="cancel" class="btn ghost">Close</button>
+      </div>
+
+      <p class="hint">
+        Tip: avatars update instantly; name & colors broadcast to everyone.
+      </p>
+    </form>
+  </dialog>
+
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="./app.js" type="module"></script>
 </body>
 </html>
