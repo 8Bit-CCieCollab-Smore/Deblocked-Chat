@@ -1,23 +1,23 @@
-# Use Node 18
+# Use Node 18 LTS
 FROM node:18
 
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and install dependencies
+# Copy dependency manifests
 COPY package*.json ./
 
-# Make sure build tools are present (needed for sqlite3 native build)
+# Install build tools needed for sqlite3 native bindings
 RUN apt-get update && apt-get install -y build-essential python3
 
-# Install all deps (not just prod)
+# Install all dependencies (not just production ones)
 RUN npm install
 
-# Copy rest of the app
+# Copy the rest of the app
 COPY . .
 
 # Expose Fly’s default port
 EXPOSE 8080
 
-# Start server
+# Launch the chat backend
 CMD ["node", "server.cjs"]
